@@ -1,0 +1,154 @@
+{
+  "heldout": {
+    "ts": "2026-10-11T21:23:25+00:00",
+    "run_file": "r-20261011-170439.json",
+    "hash": "a822e56c4ead6872f8840a417995c808568e203ca1e22b0a8f364f4fca4826c2",
+    "champion_status": "ok",
+    "items": [
+      {
+        "model": "stories110M.bin",
+        "prompt": "Tom had a red ball and",
+        "baseline_tps": 13.868562,
+        "champion_tps": 110.310421,
+        "omp_tps": 65.417488,
+        "speedup": 7.9539912645593684
+      },
+      {
+        "model": "stories42M.bin",
+        "prompt": "One sunny morning, a small bird",
+        "baseline_tps": 43.766578,
+        "champion_tps": 368.715084,
+        "omp_tps": 162.561576,
+        "speedup": 8.4245810581764
+      },
+      {
+        "model": "stories15M.bin",
+        "prompt": "The old man walked to the river",
+        "baseline_tps": 129.136924,
+        "champion_tps": 921.296296,
+        "omp_tps": 346.689895,
+        "speedup": 7.134259261123488
+      }
+    ],
+    "speedup_geomean": 7.819172066754087,
+    "omp_reference_geomean": 3.609741996566038,
+    "forced": false
+  },
+  "rounds": [
+    {
+      "round": 0,
+      "speedup": 1,
+      "promotion": false
+    },
+    {
+      "round": 1,
+      "speedup": 6.0029025076584235,
+      "promotion": true
+    },
+    {
+      "round": 2,
+      "speedup": 5.963312926947587,
+      "promotion": false
+    },
+    {
+      "round": 3,
+      "speedup": 5.833795392839159,
+      "promotion": false
+    },
+    {
+      "round": 4,
+      "speedup": 6.374599798778065,
+      "promotion": true
+    },
+    {
+      "round": 5,
+      "speedup": 6.674115570832551,
+      "promotion": true
+    },
+    {
+      "round": 6,
+      "speedup": 5.803062679501648,
+      "promotion": false
+    },
+    {
+      "round": 7,
+      "speedup": 5.601363261801148,
+      "promotion": false
+    },
+    {
+      "round": 8,
+      "speedup": 7.137226342629706,
+      "promotion": false
+    }
+  ],
+  "parallelism": {
+    "ratio": 2.8685308861824854,
+    "conditions": [
+      {
+        "name": "parallel",
+        "wall": 3.728771541034803,
+        "valid": 3,
+        "intervals": [
+          {
+            "agent": 0,
+            "start": 0.00025604100665077567,
+            "end": 3.137119416031055
+          },
+          {
+            "agent": 2,
+            "start": 0.00031712499912828207,
+            "end": 3.7281240000156686
+          },
+          {
+            "agent": 4,
+            "start": 0.0005255410214886069,
+            "end": 3.2843832499929704
+          }
+        ]
+      },
+      {
+        "name": "serial",
+        "wall": 10.696096332976595,
+        "valid": 3,
+        "intervals": [
+          {
+            "agent": 0,
+            "start": 2.4999608285725117e-06,
+            "end": 3.1554869579849765
+          },
+          {
+            "agent": 2,
+            "start": 3.155501124972943,
+            "end": 7.415491666994058
+          },
+          {
+            "agent": 4,
+            "start": 7.415510374994483,
+            "end": 10.696073332976084
+          }
+        ]
+      }
+    ]
+  },
+  "repair": {
+    "source_id": "cd3837a85f214b66b54db5a5ab6450c5",
+    "repair_id": "db4ddb2b915542ef96b1b422f352d603",
+    "original_status": "compile_error",
+    "repair_status": "ok",
+    "retrieval_method": "vector",
+    "lesson": {
+      "rule": "dispatch_apply_f needs a C callback void (*)(void*, size_t), not an Objective-C block.",
+      "source_failure_id": "cd3837a85f214b66b54db5a5ab6450c5",
+      "verified": true,
+      "scope": [
+        "stories15M.bin::Once upon a time",
+        "stories15M.bin::The little dog found a",
+        "stories42M.bin::Lily wanted to go to the park"
+      ]
+    }
+  },
+  "kernel_sha256": "3344b4f14aec4cf8c07acc6d04d17d8f436d38548abb02dd562d556ad527f231",
+  "run_id": "r-20261011-170439",
+  "candidate_count": 48,
+  "correct_count": 36
+}
