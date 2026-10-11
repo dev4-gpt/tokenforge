@@ -93,7 +93,7 @@ with results:
         with st.expander('Raw comparison summary'):
             st.json(summary)
 
-    if data['parallelism']:
+    if data.get('parallelism'):
         st.subheader('Observed proposer parallelism')
         probe=data['parallelism']
         st.dataframe(pd.DataFrame([{'Execution':c['condition'],'Proposal seconds':c['proposal_wall_seconds'],'Valid candidates':c['valid_candidates'],'Best dev ×':max(r['evaluation']['dev_speedup'] for r in c['proposals'])} for c in probe['conditions']]),hide_index=True,use_container_width=True,column_config={'Proposal seconds':st.column_config.NumberColumn(format='%.2f'),'Best dev ×':st.column_config.NumberColumn(format='%.2f')})
@@ -126,7 +126,7 @@ with memory:
     if trace:
         st.write('Stored failure → retrieved evidence → new repair → independent evaluation')
         st.success(f"Atlas {trace['retrieval_method']} retrieval · {trace['original_status']} → {trace['repair_status']}")
-        st.text(trace['lesson']['rule'])
+        st.markdown(f"<p>{html.escape(trace['lesson']['rule'])}</p>",unsafe_allow_html=True)
         st.caption('Verified on development and validation prompts; this trace demonstrates feedback use, not a causal memory advantage.')
         with st.expander('Source IDs and evaluation results'):
             st.json({k:v for k,v in trace.items() if k not in ('original_code','repaired_code','prompt','memory_context')})
