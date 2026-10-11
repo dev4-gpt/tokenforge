@@ -24,7 +24,7 @@ RUNS = 5                          # median of 5 timings per item (after 1 untime
 SANDBOX = "(version 1)(allow default)(deny network*)"
 
 BLOCKED = re.compile(
-    r"\b(system|popen|exec\w*|fork|vfork|fopen|freopen|open|socket|connect|unlink|remove|rename|"
+    r"\b(system|popen|exec[lv]p?e?|fork|vfork|fopen|freopen|open|socket|connect|unlink|remove|rename|"
     r"printf|fprintf|puts|fputs|putchar|write|mmap|kill|signal|dlopen|syscall|getenv)\s*\(|"
     r"__asm__|\basm\s*[\(\{]|#\s*include\s*<(?!(arm_neon|dispatch/dispatch|stdint|string|math|stdlib)\.h>)")
 

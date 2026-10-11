@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TokenForge Results</title>
+<meta name="description" content="Luminal-hosted DeepSeek agents rewrite llama2.c's matmul; every speedup is checked for byte-identical output.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a lab report on one column (max 1080px); summary first, then the loop, the rounds, the evidence, the code. */
+:root {
+  --bg: #f4f6f9; --surface: #ffffff; --ink: #121821; --muted: #566070; --faint: #8b94a3; --line: #dde2e9;
+  --champ: #2a78d6; --omp: #eb6834; --base: #9aa3af; --fail: #d03b3b; --good: #0a8f0a; --code-bg: #f0f3f7;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1116; --surface: #161a21; --ink: #eef1f5; --muted: #a3acb9; --faint: #737d8b; --line: #2a313b;
+  --champ: #3987e5; --omp: #d95926; --base: #6d7683; --fail: #e05656; --good: #2fb52f; --code-bg: #11151b; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0e1116; --surface: #161a21; --ink: #eef1f5; --muted: #a3acb9; --faint: #737d8b; --line: #2a313b;
+  --champ: #3987e5; --omp: #d95926; --base: #6d7683; --fail: #e05656; --good: #2fb52f; --code-bg: #11151b; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 var(--body); margin: 0 }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 64px; display: grid; gap: 56px }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -0.01em }
+h1 { font-size: clamp(2.4rem, 6vw, 3.6rem); line-height: 1.02; font-weight: 700 }
+h2 { font-size: 1.6rem; font-weight: 600 }
+h3 { font-size: 1.1rem; font-weight: 600 }
+p { margin: 0; max-width: 68ch }
+.eyebrow { font: 500 0.78rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted) }
+.muted { color: var(--muted) }
+.mono, code { font-family: var(--mono) }
+.num { font-variant-numeric: tabular-nums }
+section { display: grid; gap: 18px; min-width: 0 }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; min-width: 0 }
+
+header { display: grid; gap: 16px }
+.chips { display: flex; flex-wrap: wrap; gap: 8px }
+.chip { font: 500 0.8rem/1 var(--mono); border: 1px solid var(--line); border-radius: 999px; padding: 7px 11px; background: var(--surface); color: var(--muted) }
+.chip b { color: var(--ink); font-weight: 500 }
+
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 28px; align-items: start }
+.big { font: 700 clamp(4rem, 12vw, 6.5rem)/0.9 var(--display); color: var(--champ); letter-spacing: -0.03em }
+.big small { font-size: 0.42em; color: var(--ink); letter-spacing: 0 }
+.facts { display: grid; gap: 10px; margin-top: 14px }
+.fact { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); padding-top: 9px; font-size: 0.95rem }
+.fact span:last-child { font-family: var(--mono); font-variant-numeric: tabular-nums }
+
+.legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.85rem; color: var(--muted) }
+.key { display: inline-flex; align-items: center; gap: 7px }
+.sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block }
+svg { display: block; width: 100%; height: auto; overflow: visible }
+svg text { fill: var(--muted); font: 12px var(--mono) }
+svg .ink { fill: var(--ink) }
+svg .grid { stroke: var(--line); stroke-width: 1 }
+
+.loop { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px }
+.step { display: grid; gap: 6px; align-content: start }
+.step .n { font: 600 0.8rem/1 var(--mono); color: var(--champ) }
+
+.two { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 18px }
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem }
+th { text-align: left; font: 500 0.75rem/1.2 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--line) }
+td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono) }
+.scroll { overflow-x: auto }
+.pill { font: 500 0.75rem/1 var(--mono); padding: 4px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap }
+.pill.ok { color: var(--good) } .pill.bad { color: var(--fail) }
+.code { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 14px }
+pre { margin: 0; background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 14px; overflow: auto; max-height: 460px; font: 12px/1.5 var(--mono) }
+.limits { display: grid; gap: 8px; padding-left: 1.1em; margin: 0 }
+.callout { border-left: 3px solid var(--omp); padding: 4px 0 4px 14px; color: var(--muted) }
+#tip { position: fixed; pointer-events: none; z-index: 10; background: var(--ink); color: var(--bg); font: 12px/1.45 var(--mono); padding: 8px 10px; border-radius: 6px; max-width: 320px }
+a { color: var(--champ) }
+a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--champ); outline-offset: 2px }
+
+@media (max-width: 760px) { .hero, .two, .code, .loop { grid-template-columns: 1fr } .wrap { gap: 44px } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">c0mpiled-15 · Track 1 · Self-improving agent team</div>
+    <h1>TokenForge</h1>
+    <p class="muted">Six agents on Luminal rewrite the hottest function of a small LLM that runs on this laptop. A harness they cannot change keeps a kernel only if the model's output stays byte-identical, then times it. MongoDB Atlas stores every attempt so the next round can learn from it.</p>
+    <div class="chips" id="chips"></div>
+  </header>
+
+  <section aria-labelledby="h-held">
+    <div class="hero">
+      <div>
+        <div class="eyebrow" id="h-held">Fresh tests, run once</div>
+        <div class="big num" id="bigx"></div>
+        <p class="muted" style="margin-top:10px">Geometric-mean speedup over stock llama2.c on a model and prompts that were never used while the agents optimized.</p>
+        <div class="facts" id="facts"></div>
+      </div>
+      <div class="panel">
+        <h3>Tokens per second, held-out</h3>
+        <div class="legend" style="margin:10px 0 6px">
+          <span class="key"><span class="sw" style="background:var(--base)"></span>Stock llama2.c (-O3)</span>
+          <span class="key"><span class="sw" style="background:var(--omp)"></span>Upstream OpenMP build</span>
+          <span class="key"><span class="sw" style="background:var(--champ)"></span>TokenForge champion</span>
+        </div>
+        <div id="heldchart"></div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-loop">
+    <h2 id="h-loop">One round</h2>
+    <div class="loop">
+      <div class="panel step"><span class="n">1 · PROPOSE</span><h3>Six agents, in parallel</h3><p class="muted">DeepSeek-V4.1-Flash on Luminal. Three run with thinking off ("fast"), three with low reasoning ("reasoner"). Each gets a different strategy hint plus memories retrieved from Atlas.</p></div>
+      <div class="panel step"><span class="n">2 · TEST</span><h3>A referee they can't touch</h3><p class="muted">Same <code>clang -O3</code> flags, unsafe code rejected, no network. Output must match the original byte for byte. Then a warm-up and the median of 5 timed runs.</p></div>
+      <div class="panel step"><span class="n">3 · LEARN</span><h3>Memory in MongoDB Atlas</h3><p class="muted">Every attempt is stored with an on-device embedding. A new champion must beat the old one by 5% on the 15M model and also win on the 42M model.</p></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-rounds">
+    <h2 id="h-rounds">Round by round</h2>
+    <div class="two">
+      <div class="panel">
+        <h3>Speedup on the dev model, every candidate</h3>
+        <div class="legend" style="margin:10px 0 6px">
+          <span class="key"><span class="sw" style="background:var(--champ)"></span>Champion, re-measured each round</span>
+          <span class="key"><span class="sw" style="background:var(--champ);opacity:.35"></span>Correct candidate</span>
+          <span class="key"><span class="sw" style="background:var(--fail)"></span>Failed (bottom lane)</span>
+        </div>
+        <div id="roundchart"></div>
+      </div>
+      <div class="panel">
+        <h3>Correct candidates per round</h3>
+        <div class="legend" style="margin:10px 0 6px">
+          <span class="key"><span class="sw" style="background:var(--champ)"></span>Correct</span>
+          <span class="key"><span class="sw" style="background:var(--fail)"></span>Failed</span>
+        </div>
+        <div id="okchart"></div>
+      </div>
+    </div>
+    <p class="callout" id="noise"></p>
+  </section>
+
+  <section aria-labelledby="h-team">
+    <h2 id="h-team">The team</h2>
+    <div class="two">
+      <div class="panel scroll"><h3>Champion lineage</h3><table id="lineage"></table></div>
+      <div class="panel scroll"><h3>Fast vs reasoner</h3><table id="modes"></table></div>
+    </div>
+    <div class="panel scroll"><h3>Failures the team learned from</h3><table id="fails"></table></div>
+  </section>
+
+  <section aria-labelledby="h-code">
+    <h2 id="h-code">The kernel</h2>
+    <div class="code">
+      <div><div class="eyebrow" style="margin-bottom:8px">Stock llama2.c</div><pre id="basecode"></pre></div>
+      <div><div class="eyebrow" style="margin-bottom:8px">Final champion (agent-written)</div><pre id="champcode"></pre></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-limits">
+    <h2 id="h-limits">Limits</h2>
+    <ul class="limits muted">
+      <li>One laptop (Apple M3 Pro, 12 cores) with other apps running. We report medians and ranges.</li>
+      <li>Only <code>matmul</code> was optimized; the rest of llama2.c is unmodified upstream code (MIT).</li>
+      <li>No Accelerate or BLAS is linked, so the claim is faster than stock llama2.c, not faster than BLAS.</li>
+      <li>The DeepSeek weights do not change. What improves is the kernel and the team's memory.</li>
+      <li>One candidate in this run was wrongly rejected by the safety filter (it matched the word "execution"). The filter is fixed for future runs.</li>
+    </ul>
+    <p class="muted"><a href="https://github.com/dev4-gpt/tokenforge">github.com/dev4-gpt/tokenforge</a></p>
+  </section>
+</div>
+<div id="tip" hidden></div>
+
+<script>
+const D = {"run_id": "r-20261011-170439", "model": "deepseek-ai/DeepSeek-V4.1-Flash", "baseline": {"dev_tps": [147.845468, 149.193548], "val_tps": [42.475987]}, "omp_dev": 2.341660283402982, "rounds": [{"round": 1, "champion_dev_speedup": 6.0029025076584235, "best_dev_speedup": 6.0029025076584235, "n_ok": 5, "n_total": 6, "promoted_model": "deepseek-ai/DeepSeek-V4.1-Flash/fast", "llm_tokens": 15819}, {"round": 2, "champion_dev_speedup": 5.963312926947587, "best_dev_speedup": 5.893523480147398, "n_ok": 5, "n_total": 6, "promoted_model": null, "llm_tokens": 24711}, {"round": 3, "champion_dev_speedup": 5.833795392839159, "best_dev_speedup": 6.4807281034741155, "n_ok": 5, "n_total": 6, "promoted_model": null, "llm_tokens": 20141}, {"round": 4, "champion_dev_speedup": 6.374599798778065, "best_dev_speedup": 6.374599798778065, "n_ok": 3, "n_total": 6, "promoted_model": "deepseek-ai/DeepSeek-V4.1-Flash/fast", "llm_tokens": 28788}, {"round": 5, "champion_dev_speedup": 6.674115570832551, "best_dev_speedup": 6.674115570832551, "n_ok": 4, "n_total": 6, "promoted_model": "deepseek-ai/DeepSeek-V4.1-Flash/reasoner", "llm_tokens": 34411}, {"round": 6, "champion_dev_speedup": 5.803062679501648, "best_dev_speedup": 6.162970435757758, "n_ok": 5, "n_total": 6, "promoted_model": null, "llm_tokens": 29884}, {"round": 7, "champion_dev_speedup": 5.601363261801148, "best_dev_speedup": 6.1390204130832275, "n_ok": 4, "n_total": 6, "promoted_model": null, "llm_tokens": 37765}, {"round": 8, "champion_dev_speedup": 7.137226342629706, "best_dev_speedup": 6.737737612709973, "n_ok": 5, "n_total": 6, "promoted_model": null, "llm_tokens": 34114}], "candidates": [{"round": 1, "agent": 0, "mode": "fast", "status": "ok", "speedup": 5.835, "val": null, "note": "4-row blocking with NEON FMA quad-accumulators breaks the FP dependency chain and boosts throughput.", "error": "", "promoted": false, "tokens": 1342}, {"round": 1, "agent": 1, "mode": "reasoner", "status": "rejected", "speedup": 0, "val": null, "note": "dispatch_apply over rows (real parallelism vs ignored omp pragma) plus NEON FMA with 4 accumulators for ILP.", "error": "blocked construct: #include <", "promoted": false, "tokens": 3743}, {"round": 1, "agent": 5, "mode": "reasoner", "status": "ok", "speedup": 5.796, "val": null, "note": "4-way NEON FMA per row with 16-wide unroll, chunked over dispatch_apply_f so each core gets 8 rows.", "error": "", "promoted": false, "tokens": 6598}, {"round": 1, "agent": 4, "mode": "fast", "status": "ok", "speedup": 6.003, "val": 7.637, "note": "NEON 4-lane FMA with 4-way unroll over the dot product; ~4x scalar throughput, same math order per lane.", "error": "", "promoted": true, "tokens": 1146}, {"round": 1, "agent": 2, "mode": "fast", "status": "ok", "speedup": 5.796, "val": null, "note": "Blocked 4 rows/iter, NEON FMA with reused x vectors, scalar tail for exactness.", "error": "", "promoted": false, "tokens": 1225}, {"round": 1, "agent": 3, "mode": "reasoner", "status": "ok", "speedup": 3.397, "val": null, "note": "dispatch_apply over rows + NEON FMA with 4-way unroll and tree reduction.", "error": "", "promoted": false, "tokens": 1765}, {"round": 2, "agent": 0, "mode": "fast", "status": "ok", "speedup": 5.336, "val": null, "note": "GCD dispatch_apply over 4-row blocks replaces OpenMP; NEON FMA quad-accumulators preserved.", "error": "", "promoted": false, "tokens": 1746}, {"round": 2, "agent": 1, "mode": "reasoner", "status": "no_code", "speedup": 0, "val": null, "note": "", "error": "model returned no code block", "promoted": false, "tokens": 8954}, {"round": 2, "agent": 2, "mode": "fast", "status": "ok", "speedup": 3.406, "val": null, "note": "Combined dispatch_apply row-parallelism with 4-way NEON FMA quad accumulators per row for latency hiding.", "error": "", "promoted": false, "tokens": 1823}, {"round": 2, "agent": 3, "mode": "reasoner", "status": "ok", "speedup": 5.894, "val": null, "note": "Two-row blocking reuses x loads across two weight rows, doubling FMA chains (8 accumulators) to hide latency.", "error": "", "promoted": false, "tokens": 4839}, {"round": 2, "agent": 4, "mode": "fast", "status": "ok", "speedup": 5.725, "val": null, "note": "Kept 4-accumulator NEON FMA layout, switched to static scheduling for stable core balance.", "error": "", "promoted": false, "tokens": 1568}, {"round": 2, "agent": 5, "mode": "reasoner", "status": "ok", "speedup": 5.588, "val": null, "note": "4-row block, 16 NEON accumulators, x loaded once per 16 cols and reused across 4 rows \u2014 breaks FMA dep chains and cuts x reloads.", "error": "", "promoted": false, "tokens": 5781}, {"round": 3, "agent": 2, "mode": "fast", "status": "ok", "speedup": 3.341, "val": null, "note": "Kept identical NEON FMA math; replaced the ignored omp pragma with real GCD parallelism via dispatch_apply over rows.", "error": "", "promoted": false, "tokens": 1854}, {"round": 3, "agent": 5, "mode": "reasoner", "status": "ok", "speedup": 5.669, "val": null, "note": "Replaced ignored omp pragma with dispatch_apply over row chunks, NEON FMA 4-way unroll with tree reduction.", "error": "", "promoted": false, "tokens": 3776}, {"round": 3, "agent": 4, "mode": "fast", "status": "compile_error", "speedup": 0, "val": null, "note": "Replaced ignored omp pragma with dispatch_apply_f for real parallelism, kept 16-wide unrolled NEON FMA quad-accumulators.", "error": "kernel.c:10:43: error: passing 'void (^)(void *, size_t)' to parameter of incompatible type 'void (* _Nonnull)(void * _Nullable, size_t)' (aka 'void (*)(void * _Nullable, unsigned long)') | 1 error generated.", "promoted": false, "tokens": 1625}, {"round": 3, "agent": 3, "mode": "reasoner", "status": "ok", "speedup": 6.481, "val": 7.94, "note": "2-row blocking reuses x vector loads and 8 independent NEON accumulators; real parallelism via dispatch_apply over 64-row chunks.", "error": "", "promoted": false, "tokens": 7197}, {"round": 3, "agent": 1, "mode": "reasoner", "status": "ok", "speedup": 5.699, "val": null, "note": "dispatch_apply_f over 8-row chunks with 16-wide NEON FMA per row for ILP and load balance.", "error": "", "promoted": false, "tokens": 2657}, {"round": 3, "agent": 0, "mode": "fast", "status": "ok", "speedup": 5.7, "val": null, "note": "Blocked 4 rows/iter reusing x chunks across 4 weight rows to boost cache reuse and ILP.", "error": "", "promoted": false, "tokens": 3032}, {"round": 4, "agent": 0, "mode": "fast", "status": "ok", "speedup": 3.461, "val": null, "note": "dispatch_apply row-parallelism with 4-way NEON FMA accumulators; same math order as champion.", "error": "", "promoted": false, "tokens": 1636}, {"round": 4, "agent": 1, "mode": "reasoner", "status": "no_code", "speedup": 0, "val": null, "note": "", "error": "model returned no code block", "promoted": false, "tokens": 9007}, {"round": 4, "agent": 2, "mode": "fast", "status": "rejected", "speedup": 0, "val": null, "note": "dispatch_apply_f row-chunked NEON FMA with 4 float32x4 accumulators and 16-wide unroll for ILP.", "error": "blocked construct: execution (", "promoted": false, "tokens": 2039}, {"round": 4, "agent": 3, "mode": "reasoner", "status": "no_code", "speedup": 0, "val": null, "note": "", "error": "empty answer (reasoning used the whole token budget)", "promoted": false, "tokens": 9047}, {"round": 4, "agent": 4, "mode": "fast", "status": "ok", "speedup": 6.375, "val": 8.333, "note": "GCD dispatch_apply over chunked row blocks, NEON FMA quad-accumulators, tree reduction preserved.", "error": "", "promoted": true, "tokens": 1771}, {"round": 4, "agent": 5, "mode": "reasoner", "status": "ok", "speedup": 6.053, "val": null, "note": "4-row blocking reuses each x chunk across four weight rows, cutting x traffic 4x and improving L1/L2 locality.", "error": "", "promoted": false, "tokens": 5288}, {"round": 5, "agent": 0, "mode": "fast", "status": "ok", "speedup": 6.295, "val": null, "note": "Two-row blocking reuses each x load across two weight rows, doubling FMA chains to 8 and halving x traffic.", "error": "", "promoted": false, "tokens": 2852}, {"round": 5, "agent": 2, "mode": "fast", "status": "ok", "speedup": 6.058, "val": null, "note": "4-row blocking with 16 NEON accumulators, x loaded once per 16 cols reused across 4 rows, breaking FMA dep chains.", "error": "", "promoted": false, "tokens": 3518}, {"round": 5, "agent": 3, "mode": "reasoner", "status": "no_code", "speedup": 0, "val": null, "note": "", "error": "model returned no code block", "promoted": false, "tokens": 9196}, {"round": 5, "agent": 4, "mode": "fast", "status": "ok", "speedup": 5.923, "val": null, "note": "4-row blocking reuses each x vector across 4 weight rows, cutting x loads 4x and improving cache reuse.", "error": "", "promoted": false, "tokens": 3304}, {"round": 5, "agent": 5, "mode": "reasoner", "status": "compile_error", "speedup": 0, "val": null, "note": "4-row blocking to amortize x loads; same dispatch_apply scheme, chunk rounded to multiple of 4 rows.", "error": "kernel.c:120:22: error: cannot refer to declaration with an array type inside block | 1 error generated.", "promoted": false, "tokens": 7928}, {"round": 5, "agent": 1, "mode": "reasoner", "status": "ok", "speedup": 6.674, "val": 8.148, "note": "Paired rows share x loads and double in-flight FMAs; kept champion's exact per-row reduction order for bit-identical output.", "error": "", "promoted": true, "tokens": 7613}, {"round": 6, "agent": 0, "mode": "fast", "status": "ok", "speedup": 6.163, "val": 6.536, "note": "3 rows/iteration sharing x loads, 12 in-flight FMAs; chunk multiple of 6 for aligned 3-row groups.", "error": "", "promoted": false, "tokens": 4286}, {"round": 6, "agent": 1, "mode": "reasoner", "status": "ok", "speedup": 5.636, "val": null, "note": "4-row block with 16 NEON accumulators, x loaded once per 16 cols and reused across all rows.", "error": "", "promoted": false, "tokens": 4039}, {"round": 6, "agent": 2, "mode": "fast", "status": "ok", "speedup": 5.094, "val": null, "note": "Widened to 4 rows/iter sharing x loads, 16 accumulators for more FMA ILP; GCD chunked dispatch unchanged.", "error": "", "promoted": false, "tokens": 3786}, {"round": 6, "agent": 3, "mode": "reasoner", "status": "ok", "speedup": 5.921, "val": null, "note": "Extended champion to 4 rows/iter so each x chunk is reused 4x, cutting x-load traffic and boosting FMA saturation.", "error": "", "promoted": false, "tokens": 4584}, {"round": 6, "agent": 4, "mode": "fast", "status": "ok", "speedup": 6.144, "val": null, "note": "Same 2-row NEON FMA kernel as champion but retuned chunk sizing (start 8, cap ~48 chunks) for better load balance.", "error": "", "promoted": false, "tokens": 3339}, {"round": 6, "agent": 5, "mode": "reasoner", "status": "no_code", "speedup": 0, "val": null, "note": "", "error": "empty answer (reasoning used the whole token budget)", "promoted": false, "tokens": 9850}, {"round": 7, "agent": 0, "mode": "fast", "status": "ok", "speedup": 5.171, "val": null, "note": "4-row blocking, 16 NEON accumulators, x reused across 4 rows, 16 independent FMA chains to hide latency.", "error": "", "promoted": false, "tokens": 3804}, {"round": 7, "agent": 5, "mode": "reasoner", "status": "ok", "speedup": 5.487, "val": null, "note": "4 weight rows per block sharing x-loads; 16 in-flight FMAs per step, same per-row reduction tree as champion.", "error": "", "promoted": false, "tokens": 6595}, {"round": 7, "agent": 4, "mode": "fast", "status": "ok", "speedup": 4.947, "val": null, "note": "4-row blocking cuts x-load traffic 2x and keeps 16 FMA chains busy; same per-row reduction order preserves exact output.", "error": "", "promoted": false, "tokens": 3761}, {"round": 7, "agent": 3, "mode": "reasoner", "status": "no_code", "speedup": 0, "val": null, "note": "", "error": "model returned no code block", "promoted": false, "tokens": 9931}, {"round": 7, "agent": 2, "mode": "fast", "status": "ok", "speedup": 6.139, "val": 6.819, "note": "4 rows/iter reusing x loads across weight rows, quadrupling x reuse and ILP vs 2-row champion.", "error": "", "promoted": false, "tokens": 3786}, {"round": 7, "agent": 1, "mode": "reasoner", "status": "no_code", "speedup": 0, "val": null, "note": "", "error": "empty answer (reasoning used the whole token budget)", "promoted": false, "tokens": 9888}, {"round": 8, "agent": 0, "mode": "fast", "status": "ok", "speedup": 6.738, "val": null, "note": "3 rows/iter sharing x loads, 12 accumulators for ILP; GCD chunked dispatch unchanged.", "error": "", "promoted": false, "tokens": 3540}, {"round": 8, "agent": 1, "mode": "reasoner", "status": "ok", "speedup": 6.353, "val": null, "note": "4-row block (vs 2) for 4x x-reuse per load; same per-row reduction order keeps output bit-identical.", "error": "", "promoted": false, "tokens": 6632}, {"round": 8, "agent": 2, "mode": "fast", "status": "ok", "speedup": 6.63, "val": null, "note": "4-row blocking for 16 FMA chains, shared x loads, chunk aligned to 4 rows, less dispatch overhead.", "error": "", "promoted": false, "tokens": 3831}, {"round": 8, "agent": 3, "mode": "reasoner", "status": "no_code", "speedup": 0, "val": null, "note": "", "error": "model returned no code block", "promoted": false, "tokens": 9854}, {"round": 8, "agent": 4, "mode": "fast", "status": "ok", "speedup": 4.749, "val": null, "note": "4-row blocking shares x loads across 4 weight rows (16 in-flight FMAs), same reduction order as champion.", "error": "", "promoted": false, "tokens": 3810}, {"round": 8, "agent": 5, "mode": "reasoner", "status": "ok", "speedup": 3.34, "val": null, "note": "4-row blocking (16 NEON accumulators) reusing x loads across 4 rows; same per-row reduction order keeps bits identical.", "error": "", "promoted": false, "tokens": 6447}], "heldout": {"ts": "2026-10-11T21:23:25+00:00", "run_file": "r-20261011-170439.json", "hash": "a822e56c4ead6872f8840a417995c808568e203ca1e22b0a8f364f4fca4826c2", "champion_status": "ok", "items": [{"model": "stories110M.bin", "prompt": "Tom had a red ball and", "baseline_tps": 13.868562, "champion_tps": 110.310421, "omp_tps": 65.417488, "speedup": 7.9539912645593684}, {"model": "stories42M.bin", "prompt": "One sunny morning, a small bird", "baseline_tps": 43.766578, "champion_tps": 368.715084, "omp_tps": 162.561576, "speedup": 8.4245810581764}, {"model": "stories15M.bin", "prompt": "The old man walked to the river", "baseline_tps": 129.136924, "champion_tps": 921.296296, "omp_tps": 346.689895, "speedup": 7.134259261123488}], "speedup_geomean": 7.819172066754087, "omp_reference_geomean": 3.609741996566038, "forced": false}, "memory": "MongoDB Atlas Vector Search", "baseline_code": "void matmul(float* xout, float* x, float* w, int n, int d) {\n    // W (d,n) @ x (n,) -> xout (d,)\n    // by far the most amount of time is spent inside this little function\n    int i;\n    #pragma omp parallel for private(i)\n    for (i = 0; i < d; i++) {\n        float val = 0.0f;\n        for (int j = 0; j < n; j++) {\n            val += w[i * n + j] * x[j];\n        }\n        xout[i] = val;\n    }\n}\n", "champion_code": "#include <arm_neon.h>\n#include <stdint.h>\n#include <dispatch/dispatch.h>\n\n/* 2 rows at a time with 4 independent NEON accumulators per row.\n   Row A & B share the x-vector loads (x is small, stays hot in L1),\n   doubling in-flight FMAs per iteration to keep both FMA pipes busy.\n   Per-row reduction pattern matches the previous champion exactly,\n   so results are bit-identical. */\nstatic inline void mm_block(float* restrict xout, const float* restrict x,\n                            const float* restrict w, int n,\n                            int start, int end)\n{\n    const int n16 = n & ~15;\n    int i = start;\n\n    for (; i + 1 < end; i += 2) {\n        const float* wp0 = w + (size_t)i * (size_t)n;\n        const float* wp1 = wp0 + (size_t)n;\n\n        float32x4_t a0 = vdupq_n_f32(0.0f), a1 = a0, a2 = a0, a3 = a0;\n        float32x4_t b0 = a0, b1 = a0, b2 = a0, b3 = a0;\n\n        int j = 0;\n        for (; j < n16; j += 16) {\n            const float32x4_t x0 = vld1q_f32(x + j);\n            const float32x4_t x1 = vld1q_f32(x + j + 4);\n            const float32x4_t x2 = vld1q_f32(x + j + 8);\n            const float32x4_t x3 = vld1q_f32(x + j + 12);\n\n            a0 = vfmaq_f32(a0, vld1q_f32(wp0 + j),      x0);\n            a1 = vfmaq_f32(a1, vld1q_f32(wp0 + j + 4),  x1);\n            a2 = vfmaq_f32(a2, vld1q_f32(wp0 + j + 8),  x2);\n            a3 = vfmaq_f32(a3, vld1q_f32(wp0 + j + 12), x3);\n\n            b0 = vfmaq_f32(b0, vld1q_f32(wp1 + j),      x0);\n            b1 = vfmaq_f32(b1, vld1q_f32(wp1 + j + 4),  x1);\n            b2 = vfmaq_f32(b2, vld1q_f32(wp1 + j + 8),  x2);\n            b3 = vfmaq_f32(b3, vld1q_f32(wp1 + j + 12), x3);\n        }\n\n        float32x4_t s0 = vaddq_f32(vaddq_f32(a0, a1), vaddq_f32(a2, a3));\n        float32x4_t s1 = vaddq_f32(vaddq_f32(b0, b1), vaddq_f32(b2, b3));\n        float v0 = vaddvq_f32(s0);\n        float v1 = vaddvq_f32(s1);\n\n        for (; j < n; j++) {\n            const float xj = x[j];\n            v0 += wp0[j] * xj;\n            v1 += wp1[j] * xj;\n        }\n        xout[i]     = v0;\n        xout[i + 1] = v1;\n    }\n\n    if (i < end) {\n        const float* wp = w + (size_t)i * (size_t)n;\n        float32x4_t a0 = vdupq_n_f32(0.0f), a1 = a0, a2 = a0, a3 = a0;\n        int j = 0;\n        for (; j < n16; j += 16) {\n            a0 = vfmaq_f32(a0, vld1q_f32(wp + j),      vld1q_f32(x + j));\n            a1 = vfmaq_f32(a1, vld1q_f32(wp + j + 4),  vld1q_f32(x + j + 4));\n            a2 = vfmaq_f32(a2, vld1q_f32(wp + j + 8),  vld1q_f32(x + j + 8));\n            a3 = vfmaq_f32(a3, vld1q_f32(wp + j + 12), vld1q_f32(x + j + 12));\n        }\n        float32x4_t s = vaddq_f32(vaddq_f32(a0, a1), vaddq_f32(a2, a3));\n        float val = vaddvq_f32(s);\n        for (; j < n; j++) val += wp[j] * x[j];\n        xout[i] = val;\n    }\n}\n\ntypedef struct {\n    float*       xout;\n    const float* x;\n    const float* w;\n    int          n;\n    int          d;\n    int          chunk;\n} mm_ctx;\n\nstatic void mm_worker(void* p, size_t k)\n{\n    mm_ctx* c = (mm_ctx*)p;\n    int start = (int)k * c->chunk;\n    int end   = start + c->chunk;\n    if (end > c->d) end = c->d;\n    if (start < c->d)\n        mm_block(c->xout, c->x, c->w, c->n, start, end);\n}\n\nvoid matmul(float* xout, float* x, float* w, int n, int d)\n{\n    if (d <= 0 || n <= 0) return;\n\n    int chunk = 16;\n    while (chunk < d && (d + chunk - 1) / chunk > 96) chunk *= 2;\n\n    mm_ctx c;\n    c.xout = xout; c.x = x; c.w = w; c.n = n; c.d = d; c.chunk = chunk;\n\n    int nchunks = (d + chunk - 1) / chunk;\n    dispatch_apply_f((size_t)nchunks, DISPATCH_APPLY_AUTO, &c, mm_worker);\n}"};
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fx = (v, d = 2) => (v == null ? "—" : Number(v).toFixed(d) + "×");
+const H = D.heldout, R = D.rounds, C = D.candidates;
+const short = m => m.replace(".bin", "").replace("stories", "stories ");
+
+// header chips + hero
+const tokens = R.reduce((a, r) => a + (r.llm_tokens || 0), 0);
+$("chips").innerHTML = [["Agents", D.model.split("/").pop() + " · Luminal"], ["Memory", D.memory],
+  ["Device", "Apple M3 Pro"], ["Run", D.run_id]].map(([k, v]) => `<span class="chip">${k} <b>${esc(v)}</b></span>`).join("");
+$("bigx").innerHTML = `${H.speedup_geomean.toFixed(2)}<small>× faster</small>`;
+$("facts").innerHTML = [["Candidates written", C.length], ["Correct (byte-identical)", C.filter(c => c.status === "ok").length],
+  ["Luminal tokens used", tokens.toLocaleString()], ["Upstream OpenMP build, held-out", fx(H.omp_reference_geomean)]]
+  .map(([k, v]) => `<div class="fact"><span>${k}</span><span>${v}</span></div>`).join("");
+
+// tooltip
+const tip = $("tip");
+document.addEventListener("pointerover", e => { const t = e.target.closest("[data-tip]"); if (!t) return; tip.innerHTML = t.dataset.tip; tip.hidden = false; });
+document.addEventListener("pointermove", e => { if (tip.hidden) return; const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8); tip.style.left = x + "px"; tip.style.top = (e.clientY + 14) + "px"; });
+document.addEventListener("pointerout", e => { if (e.target.closest("[data-tip]")) tip.hidden = true; });
+
+// held-out small multiples: each model on its own scale
+(function () {
+  const W = 620, rowH = 92, padL = 128, padR = 70, bh = 14, gap = 4;
+  let s = "";
+  H.items.forEach((it, i) => {
+    const y0 = i * rowH + 8, max = Math.max(it.champion_tps, it.omp_tps, it.baseline_tps) * 1.02;
+    const sx = v => (v / max) * (W - padL - padR);
+    s += `<text class="ink" x="0" y="${y0 + 14}" style="font-weight:500">${esc(short(it.model))}</text>`;
+    s += `<text x="0" y="${y0 + 32}">${(it.speedup).toFixed(2)}× faster</text>`;
+    [["Stock", it.baseline_tps, "var(--base)"], ["OpenMP", it.omp_tps, "var(--omp)"], ["Champion", it.champion_tps, "var(--champ)"]].forEach(([n, v, c], j) => {
+      const y = y0 + j * (bh + gap), w = Math.max(sx(v), 2);
+      s += `<rect x="${padL}" y="${y}" width="${w}" height="${bh}" rx="3" fill="${c}" data-tip="${esc(short(it.model))} · ${n}<br>${v.toFixed(1)} tok/s<br>prompt: “${esc(it.prompt)}”"/>`;
+      s += `<text x="${padL + w + 6}" y="${y + 11}" class="${j === 2 ? "ink" : ""}">${v.toFixed(1)}</text>`;
+    });
+  });
+  $("heldchart").innerHTML = `<svg viewBox="0 0 ${W} ${H.items.length * rowH}" role="img" aria-label="Held-out tokens per second by model">${s}</svg>`;
+})();
+
+// rounds chart: candidates as dots, champion as a line, failures in a bottom lane
+(function () {
+  const W = 640, Hh = 300, l = 64, r = 28, t = 14, b = 44, lane = 22;
+  const n = R.length, ymax = Math.ceil(Math.max(...C.map(c => c.speedup), ...R.map(x => x.champion_dev_speedup)) + 0.5);
+  const sx = i => l + ((i - 1) / Math.max(n - 1, 1)) * (W - l - r);
+  const plotB = Hh - b - lane, sy = v => plotB - (v / ymax) * (plotB - t);
+  let s = "";
+  for (let v = 0; v <= ymax; v += 2) s += `<line class="grid" x1="${l}" x2="${W - r}" y1="${sy(v)}" y2="${sy(v)}"/><text x="${l - 8}" y="${sy(v) + 4}" text-anchor="end">${v}×</text>`;
+  s += `<line x1="${l}" x2="${W - r}" y1="${sy(D.omp_dev)}" y2="${sy(D.omp_dev)}" stroke="var(--omp)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+  s += `<text x="${W - r}" y="${sy(D.omp_dev) - 6}" text-anchor="end">upstream OpenMP ${D.omp_dev.toFixed(2)}×</text>`;
+  s += `<text x="${l - 22}" y="${plotB + lane - 4}" text-anchor="end">failed</text>`;
+  R.forEach(x => s += `<text x="${sx(x.round)}" y="${Hh - b + 18}" text-anchor="middle">${x.round}</text>`);
+  s += `<text x="${(l + W - r) / 2}" y="${Hh - 6}" text-anchor="middle">round</text>`;
+  C.forEach(c => {
+    const x = sx(c.round) + (c.agent - 2.5) * 5;
+    const tipTxt = `round ${c.round} · agent ${c.agent} (${esc(c.mode)})<br>${c.status === "ok" ? fx(c.speedup) : esc(c.status)}<br>${esc((c.note || c.error).slice(0, 140))}`;
+    if (c.status === "ok") s += `<circle cx="${x}" cy="${sy(c.speedup)}" r="5" fill="var(--champ)" fill-opacity=".35" stroke="var(--surface)" stroke-width="2" data-tip="${tipTxt}"/>`;
+    else s += `<path d="M${x - 4} ${plotB + lane - 12}l8 8m0-8l-8 8" stroke="var(--fail)" stroke-width="2" fill="none"/><rect x="${x - 7}" y="${plotB + lane - 15}" width="14" height="14" fill="transparent" data-tip="${tipTxt}"/>`;
+  });
+  s += `<polyline fill="none" stroke="var(--champ)" stroke-width="2" points="${R.map(x => `${sx(x.round)},${sy(x.champion_dev_speedup)}`).join(" ")}"/>`;
+  R.forEach(x => {
+    const promo = x.promoted_model;
+    s += `<circle cx="${sx(x.round)}" cy="${sy(x.champion_dev_speedup)}" r="${promo ? 7 : 4}" fill="${promo ? "var(--surface)" : "var(--champ)"}" stroke="var(--champ)" stroke-width="2.5" data-tip="round ${x.round} champion re-measured: ${fx(x.champion_dev_speedup)}${promo ? "<br>new champion (" + esc(promo.split("/").pop()) + ")" : ""}"/>`;
+  });
+  $("roundchart").innerHTML = `<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Speedup per candidate by round">${s}</svg>`;
+  const sp = R.map(x => x.champion_dev_speedup);
+  const promos = R.filter(x => x.promoted_model).map(x => x.round);
+  $("noise").textContent = `Open circles mark new champions (rounds ${promos.join(", ")}). The same champion re-measures between ${Math.min(...sp).toFixed(2)}× and ${Math.max(...sp).toFixed(2)}× on a busy laptop, so gains after round 1 are within timing noise. The big step is round 1: NEON SIMD plus multithreading.`;
+})();
+
+// correct-per-round stacked bars with a 2px surface gap
+(function () {
+  const W = 340, Hh = 300, l = 28, r = 8, t = 14, b = 44, n = R.length;
+  const maxN = Math.max(...R.map(x => x.n_total)), bw = (W - l - r) / n * 0.6;
+  const sy = v => (Hh - b) - (v / maxN) * (Hh - b - t), x0 = i => l + (i + 0.5) * (W - l - r) / n - bw / 2;
+  let s = "";
+  for (let v = 0; v <= maxN; v += 2) s += `<line class="grid" x1="${l}" x2="${W - r}" y1="${sy(v)}" y2="${sy(v)}"/><text x="${l - 6}" y="${sy(v) + 4}" text-anchor="end">${v}</text>`;
+  R.forEach((x, i) => {
+    const ok = x.n_ok, bad = x.n_total - x.n_ok, tipTxt = `round ${x.round}: ${ok}/${x.n_total} correct`;
+    s += `<rect x="${x0(i)}" y="${sy(ok)}" width="${bw}" height="${sy(0) - sy(ok)}" rx="3" fill="var(--champ)" data-tip="${tipTxt}"/>`;
+    if (bad) s += `<rect x="${x0(i)}" y="${sy(x.n_total)}" width="${bw}" height="${Math.max(sy(ok) - sy(x.n_total) - 2, 1)}" rx="3" fill="var(--fail)" data-tip="${tipTxt}"/>`;
+    s += `<text x="${x0(i) + bw / 2}" y="${Hh - b + 18}" text-anchor="middle">${x.round}</text>`;
+  });
+  s += `<text x="${(l + W - r) / 2}" y="${Hh - 6}" text-anchor="middle">round</text>`;
+  $("okchart").innerHTML = `<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Correct candidates per round">${s}</svg>`;
+})();
+
+// tables
+$("lineage").innerHTML = `<tr><th>Round</th><th>Agent</th><th class="r">Dev</th><th class="r">Validation</th><th>What it tried</th></tr>` +
+  C.filter(c => c.promoted).sort((a, b) => a.round - b.round).map(c =>
+    `<tr><td class="r">${c.round}</td><td>${esc(c.mode)}</td><td class="r">${fx(c.speedup)}</td><td class="r">${fx(c.val)}</td><td>${esc(c.note)}</td></tr>`).join("");
+const modes = {};
+C.forEach(c => { const m = modes[c.mode] ||= { n: 0, ok: 0, promo: 0, best: 0, tok: 0 }; m.n++; m.tok += c.tokens;
+  if (c.status === "ok") { m.ok++; m.best = Math.max(m.best, c.speedup); } if (c.promoted) m.promo++; });
+$("modes").innerHTML = `<tr><th>Mode</th><th class="r">Tried</th><th class="r">Correct</th><th class="r">Champions</th><th class="r">Best</th><th class="r">Tokens</th></tr>` +
+  Object.entries(modes).map(([k, m]) => `<tr><td>${esc(k)}</td><td class="r">${m.n}</td><td class="r">${m.ok}</td><td class="r">${m.promo}</td><td class="r">${fx(m.best)}</td><td class="r">${m.tok.toLocaleString()}</td></tr>`).join("");
+$("fails").innerHTML = `<tr><th>Round</th><th>Agent</th><th>Outcome</th><th>Why</th></tr>` +
+  C.filter(c => c.status !== "ok").map(c => `<tr><td class="r">${c.round}</td><td>${esc(c.mode)}</td><td><span class="pill bad">${esc(c.status.replace("_", " "))}</span></td><td class="mono" style="font-size:12px">${esc(c.error)}</td></tr>`).join("");
+$("basecode").textContent = D.baseline_code;
+$("champcode").textContent = D.champion_code;
+</script>
+
+</html>

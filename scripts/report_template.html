@@ -1,0 +1,274 @@
+<title>TokenForge Results</title>
+<meta name="description" content="Luminal-hosted DeepSeek agents rewrite llama2.c's matmul; every speedup is checked for byte-identical output.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a lab report on one column (max 1080px); summary first, then the loop, the rounds, the evidence, the code. */
+:root {
+  --bg: #f4f6f9; --surface: #ffffff; --ink: #121821; --muted: #566070; --faint: #8b94a3; --line: #dde2e9;
+  --champ: #2a78d6; --omp: #eb6834; --base: #9aa3af; --fail: #d03b3b; --good: #0a8f0a; --code-bg: #f0f3f7;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1116; --surface: #161a21; --ink: #eef1f5; --muted: #a3acb9; --faint: #737d8b; --line: #2a313b;
+  --champ: #3987e5; --omp: #d95926; --base: #6d7683; --fail: #e05656; --good: #2fb52f; --code-bg: #11151b; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0e1116; --surface: #161a21; --ink: #eef1f5; --muted: #a3acb9; --faint: #737d8b; --line: #2a313b;
+  --champ: #3987e5; --omp: #d95926; --base: #6d7683; --fail: #e05656; --good: #2fb52f; --code-bg: #11151b; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 var(--body); margin: 0 }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 64px; display: grid; gap: 56px }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -0.01em }
+h1 { font-size: clamp(2.4rem, 6vw, 3.6rem); line-height: 1.02; font-weight: 700 }
+h2 { font-size: 1.6rem; font-weight: 600 }
+h3 { font-size: 1.1rem; font-weight: 600 }
+p { margin: 0; max-width: 68ch }
+.eyebrow { font: 500 0.78rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted) }
+.muted { color: var(--muted) }
+.mono, code { font-family: var(--mono) }
+.num { font-variant-numeric: tabular-nums }
+section { display: grid; gap: 18px; min-width: 0 }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; min-width: 0 }
+
+header { display: grid; gap: 16px }
+.chips { display: flex; flex-wrap: wrap; gap: 8px }
+.chip { font: 500 0.8rem/1 var(--mono); border: 1px solid var(--line); border-radius: 999px; padding: 7px 11px; background: var(--surface); color: var(--muted) }
+.chip b { color: var(--ink); font-weight: 500 }
+
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 28px; align-items: start }
+.big { font: 700 clamp(4rem, 12vw, 6.5rem)/0.9 var(--display); color: var(--champ); letter-spacing: -0.03em }
+.big small { font-size: 0.42em; color: var(--ink); letter-spacing: 0 }
+.facts { display: grid; gap: 10px; margin-top: 14px }
+.fact { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); padding-top: 9px; font-size: 0.95rem }
+.fact span:last-child { font-family: var(--mono); font-variant-numeric: tabular-nums }
+
+.legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.85rem; color: var(--muted) }
+.key { display: inline-flex; align-items: center; gap: 7px }
+.sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block }
+svg { display: block; width: 100%; height: auto; overflow: visible }
+svg text { fill: var(--muted); font: 12px var(--mono) }
+svg .ink { fill: var(--ink) }
+svg .grid { stroke: var(--line); stroke-width: 1 }
+
+.loop { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px }
+.step { display: grid; gap: 6px; align-content: start }
+.step .n { font: 600 0.8rem/1 var(--mono); color: var(--champ) }
+
+.two { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 18px }
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem }
+th { text-align: left; font: 500 0.75rem/1.2 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--line) }
+td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono) }
+.scroll { overflow-x: auto }
+.pill { font: 500 0.75rem/1 var(--mono); padding: 4px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap }
+.pill.ok { color: var(--good) } .pill.bad { color: var(--fail) }
+.code { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 14px }
+pre { margin: 0; background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 14px; overflow: auto; max-height: 460px; font: 12px/1.5 var(--mono) }
+.limits { display: grid; gap: 8px; padding-left: 1.1em; margin: 0 }
+.callout { border-left: 3px solid var(--omp); padding: 4px 0 4px 14px; color: var(--muted) }
+#tip { position: fixed; pointer-events: none; z-index: 10; background: var(--ink); color: var(--bg); font: 12px/1.45 var(--mono); padding: 8px 10px; border-radius: 6px; max-width: 320px }
+a { color: var(--champ) }
+a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--champ); outline-offset: 2px }
+
+@media (max-width: 760px) { .hero, .two, .code, .loop { grid-template-columns: 1fr } .wrap { gap: 44px } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">c0mpiled-15 · Track 1 · Self-improving agent team</div>
+    <h1>TokenForge</h1>
+    <p class="muted">Six agents on Luminal rewrite the hottest function of a small LLM that runs on this laptop. A harness they cannot change keeps a kernel only if the model's output stays byte-identical, then times it. MongoDB Atlas stores every attempt so the next round can learn from it.</p>
+    <div class="chips" id="chips"></div>
+  </header>
+
+  <section aria-labelledby="h-held">
+    <div class="hero">
+      <div>
+        <div class="eyebrow" id="h-held">Fresh tests, run once</div>
+        <div class="big num" id="bigx"></div>
+        <p class="muted" style="margin-top:10px">Geometric-mean speedup over stock llama2.c on a model and prompts that were never used while the agents optimized.</p>
+        <div class="facts" id="facts"></div>
+      </div>
+      <div class="panel">
+        <h3>Tokens per second, held-out</h3>
+        <div class="legend" style="margin:10px 0 6px">
+          <span class="key"><span class="sw" style="background:var(--base)"></span>Stock llama2.c (-O3)</span>
+          <span class="key"><span class="sw" style="background:var(--omp)"></span>Upstream OpenMP build</span>
+          <span class="key"><span class="sw" style="background:var(--champ)"></span>TokenForge champion</span>
+        </div>
+        <div id="heldchart"></div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-loop">
+    <h2 id="h-loop">One round</h2>
+    <div class="loop">
+      <div class="panel step"><span class="n">1 · PROPOSE</span><h3>Six agents, in parallel</h3><p class="muted">DeepSeek-V4.1-Flash on Luminal. Three run with thinking off ("fast"), three with low reasoning ("reasoner"). Each gets a different strategy hint plus memories retrieved from Atlas.</p></div>
+      <div class="panel step"><span class="n">2 · TEST</span><h3>A referee they can't touch</h3><p class="muted">Same <code>clang -O3</code> flags, unsafe code rejected, no network. Output must match the original byte for byte. Then a warm-up and the median of 5 timed runs.</p></div>
+      <div class="panel step"><span class="n">3 · LEARN</span><h3>Memory in MongoDB Atlas</h3><p class="muted">Every attempt is stored with an on-device embedding. A new champion must beat the old one by 5% on the 15M model and also win on the 42M model.</p></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-rounds">
+    <h2 id="h-rounds">Round by round</h2>
+    <div class="two">
+      <div class="panel">
+        <h3>Speedup on the dev model, every candidate</h3>
+        <div class="legend" style="margin:10px 0 6px">
+          <span class="key"><span class="sw" style="background:var(--champ)"></span>Champion, re-measured each round</span>
+          <span class="key"><span class="sw" style="background:var(--champ);opacity:.35"></span>Correct candidate</span>
+          <span class="key"><span class="sw" style="background:var(--fail)"></span>Failed (bottom lane)</span>
+        </div>
+        <div id="roundchart"></div>
+      </div>
+      <div class="panel">
+        <h3>Correct candidates per round</h3>
+        <div class="legend" style="margin:10px 0 6px">
+          <span class="key"><span class="sw" style="background:var(--champ)"></span>Correct</span>
+          <span class="key"><span class="sw" style="background:var(--fail)"></span>Failed</span>
+        </div>
+        <div id="okchart"></div>
+      </div>
+    </div>
+    <p class="callout" id="noise"></p>
+  </section>
+
+  <section aria-labelledby="h-team">
+    <h2 id="h-team">The team</h2>
+    <div class="two">
+      <div class="panel scroll"><h3>Champion lineage</h3><table id="lineage"></table></div>
+      <div class="panel scroll"><h3>Fast vs reasoner</h3><table id="modes"></table></div>
+    </div>
+    <div class="panel scroll"><h3>Failures the team learned from</h3><table id="fails"></table></div>
+  </section>
+
+  <section aria-labelledby="h-code">
+    <h2 id="h-code">The kernel</h2>
+    <div class="code">
+      <div><div class="eyebrow" style="margin-bottom:8px">Stock llama2.c</div><pre id="basecode"></pre></div>
+      <div><div class="eyebrow" style="margin-bottom:8px">Final champion (agent-written)</div><pre id="champcode"></pre></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-limits">
+    <h2 id="h-limits">Limits</h2>
+    <ul class="limits muted">
+      <li>One laptop (Apple M3 Pro, 12 cores) with other apps running. We report medians and ranges.</li>
+      <li>Only <code>matmul</code> was optimized; the rest of llama2.c is unmodified upstream code (MIT).</li>
+      <li>No Accelerate or BLAS is linked, so the claim is faster than stock llama2.c, not faster than BLAS.</li>
+      <li>The DeepSeek weights do not change. What improves is the kernel and the team's memory.</li>
+      <li>One candidate in this run was wrongly rejected by the safety filter (it matched the word "execution"). The filter is fixed for future runs.</li>
+    </ul>
+    <p class="muted"><a href="https://github.com/dev4-gpt/tokenforge">github.com/dev4-gpt/tokenforge</a></p>
+  </section>
+</div>
+<div id="tip" hidden></div>
+
+<script>
+const D = /*__DATA__*/null;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fx = (v, d = 2) => (v == null ? "—" : Number(v).toFixed(d) + "×");
+const H = D.heldout, R = D.rounds, C = D.candidates;
+const short = m => m.replace(".bin", "").replace("stories", "stories ");
+
+// header chips + hero
+const tokens = R.reduce((a, r) => a + (r.llm_tokens || 0), 0);
+$("chips").innerHTML = [["Agents", D.model.split("/").pop() + " · Luminal"], ["Memory", D.memory],
+  ["Device", "Apple M3 Pro"], ["Run", D.run_id]].map(([k, v]) => `<span class="chip">${k} <b>${esc(v)}</b></span>`).join("");
+$("bigx").innerHTML = `${H.speedup_geomean.toFixed(2)}<small>× faster</small>`;
+$("facts").innerHTML = [["Candidates written", C.length], ["Correct (byte-identical)", C.filter(c => c.status === "ok").length],
+  ["Luminal tokens used", tokens.toLocaleString()], ["Upstream OpenMP build, held-out", fx(H.omp_reference_geomean)]]
+  .map(([k, v]) => `<div class="fact"><span>${k}</span><span>${v}</span></div>`).join("");
+
+// tooltip
+const tip = $("tip");
+document.addEventListener("pointerover", e => { const t = e.target.closest("[data-tip]"); if (!t) return; tip.innerHTML = t.dataset.tip; tip.hidden = false; });
+document.addEventListener("pointermove", e => { if (tip.hidden) return; const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8); tip.style.left = x + "px"; tip.style.top = (e.clientY + 14) + "px"; });
+document.addEventListener("pointerout", e => { if (e.target.closest("[data-tip]")) tip.hidden = true; });
+
+// held-out small multiples: each model on its own scale
+(function () {
+  const W = 620, rowH = 92, padL = 128, padR = 70, bh = 14, gap = 4;
+  let s = "";
+  H.items.forEach((it, i) => {
+    const y0 = i * rowH + 8, max = Math.max(it.champion_tps, it.omp_tps, it.baseline_tps) * 1.02;
+    const sx = v => (v / max) * (W - padL - padR);
+    s += `<text class="ink" x="0" y="${y0 + 14}" style="font-weight:500">${esc(short(it.model))}</text>`;
+    s += `<text x="0" y="${y0 + 32}">${(it.speedup).toFixed(2)}× faster</text>`;
+    [["Stock", it.baseline_tps, "var(--base)"], ["OpenMP", it.omp_tps, "var(--omp)"], ["Champion", it.champion_tps, "var(--champ)"]].forEach(([n, v, c], j) => {
+      const y = y0 + j * (bh + gap), w = Math.max(sx(v), 2);
+      s += `<rect x="${padL}" y="${y}" width="${w}" height="${bh}" rx="3" fill="${c}" data-tip="${esc(short(it.model))} · ${n}<br>${v.toFixed(1)} tok/s<br>prompt: “${esc(it.prompt)}”"/>`;
+      s += `<text x="${padL + w + 6}" y="${y + 11}" class="${j === 2 ? "ink" : ""}">${v.toFixed(1)}</text>`;
+    });
+  });
+  $("heldchart").innerHTML = `<svg viewBox="0 0 ${W} ${H.items.length * rowH}" role="img" aria-label="Held-out tokens per second by model">${s}</svg>`;
+})();
+
+// rounds chart: candidates as dots, champion as a line, failures in a bottom lane
+(function () {
+  const W = 640, Hh = 300, l = 64, r = 28, t = 14, b = 44, lane = 22;
+  const n = R.length, ymax = Math.ceil(Math.max(...C.map(c => c.speedup), ...R.map(x => x.champion_dev_speedup)) + 0.5);
+  const sx = i => l + ((i - 1) / Math.max(n - 1, 1)) * (W - l - r);
+  const plotB = Hh - b - lane, sy = v => plotB - (v / ymax) * (plotB - t);
+  let s = "";
+  for (let v = 0; v <= ymax; v += 2) s += `<line class="grid" x1="${l}" x2="${W - r}" y1="${sy(v)}" y2="${sy(v)}"/><text x="${l - 8}" y="${sy(v) + 4}" text-anchor="end">${v}×</text>`;
+  s += `<line x1="${l}" x2="${W - r}" y1="${sy(D.omp_dev)}" y2="${sy(D.omp_dev)}" stroke="var(--omp)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+  s += `<text x="${W - r}" y="${sy(D.omp_dev) - 6}" text-anchor="end">upstream OpenMP ${D.omp_dev.toFixed(2)}×</text>`;
+  s += `<text x="${l - 22}" y="${plotB + lane - 4}" text-anchor="end">failed</text>`;
+  R.forEach(x => s += `<text x="${sx(x.round)}" y="${Hh - b + 18}" text-anchor="middle">${x.round}</text>`);
+  s += `<text x="${(l + W - r) / 2}" y="${Hh - 6}" text-anchor="middle">round</text>`;
+  C.forEach(c => {
+    const x = sx(c.round) + (c.agent - 2.5) * 5;
+    const tipTxt = `round ${c.round} · agent ${c.agent} (${esc(c.mode)})<br>${c.status === "ok" ? fx(c.speedup) : esc(c.status)}<br>${esc((c.note || c.error).slice(0, 140))}`;
+    if (c.status === "ok") s += `<circle cx="${x}" cy="${sy(c.speedup)}" r="5" fill="var(--champ)" fill-opacity=".35" stroke="var(--surface)" stroke-width="2" data-tip="${tipTxt}"/>`;
+    else s += `<path d="M${x - 4} ${plotB + lane - 12}l8 8m0-8l-8 8" stroke="var(--fail)" stroke-width="2" fill="none"/><rect x="${x - 7}" y="${plotB + lane - 15}" width="14" height="14" fill="transparent" data-tip="${tipTxt}"/>`;
+  });
+  s += `<polyline fill="none" stroke="var(--champ)" stroke-width="2" points="${R.map(x => `${sx(x.round)},${sy(x.champion_dev_speedup)}`).join(" ")}"/>`;
+  R.forEach(x => {
+    const promo = x.promoted_model;
+    s += `<circle cx="${sx(x.round)}" cy="${sy(x.champion_dev_speedup)}" r="${promo ? 7 : 4}" fill="${promo ? "var(--surface)" : "var(--champ)"}" stroke="var(--champ)" stroke-width="2.5" data-tip="round ${x.round} champion re-measured: ${fx(x.champion_dev_speedup)}${promo ? "<br>new champion (" + esc(promo.split("/").pop()) + ")" : ""}"/>`;
+  });
+  $("roundchart").innerHTML = `<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Speedup per candidate by round">${s}</svg>`;
+  const sp = R.map(x => x.champion_dev_speedup);
+  const promos = R.filter(x => x.promoted_model).map(x => x.round);
+  $("noise").textContent = `Open circles mark new champions (rounds ${promos.join(", ")}). The same champion re-measures between ${Math.min(...sp).toFixed(2)}× and ${Math.max(...sp).toFixed(2)}× on a busy laptop, so gains after round 1 are within timing noise. The big step is round 1: NEON SIMD plus multithreading.`;
+})();
+
+// correct-per-round stacked bars with a 2px surface gap
+(function () {
+  const W = 340, Hh = 300, l = 28, r = 8, t = 14, b = 44, n = R.length;
+  const maxN = Math.max(...R.map(x => x.n_total)), bw = (W - l - r) / n * 0.6;
+  const sy = v => (Hh - b) - (v / maxN) * (Hh - b - t), x0 = i => l + (i + 0.5) * (W - l - r) / n - bw / 2;
+  let s = "";
+  for (let v = 0; v <= maxN; v += 2) s += `<line class="grid" x1="${l}" x2="${W - r}" y1="${sy(v)}" y2="${sy(v)}"/><text x="${l - 6}" y="${sy(v) + 4}" text-anchor="end">${v}</text>`;
+  R.forEach((x, i) => {
+    const ok = x.n_ok, bad = x.n_total - x.n_ok, tipTxt = `round ${x.round}: ${ok}/${x.n_total} correct`;
+    s += `<rect x="${x0(i)}" y="${sy(ok)}" width="${bw}" height="${sy(0) - sy(ok)}" rx="3" fill="var(--champ)" data-tip="${tipTxt}"/>`;
+    if (bad) s += `<rect x="${x0(i)}" y="${sy(x.n_total)}" width="${bw}" height="${Math.max(sy(ok) - sy(x.n_total) - 2, 1)}" rx="3" fill="var(--fail)" data-tip="${tipTxt}"/>`;
+    s += `<text x="${x0(i) + bw / 2}" y="${Hh - b + 18}" text-anchor="middle">${x.round}</text>`;
+  });
+  s += `<text x="${(l + W - r) / 2}" y="${Hh - 6}" text-anchor="middle">round</text>`;
+  $("okchart").innerHTML = `<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Correct candidates per round">${s}</svg>`;
+})();
+
+// tables
+$("lineage").innerHTML = `<tr><th>Round</th><th>Agent</th><th class="r">Dev</th><th class="r">Validation</th><th>What it tried</th></tr>` +
+  C.filter(c => c.promoted).sort((a, b) => a.round - b.round).map(c =>
+    `<tr><td class="r">${c.round}</td><td>${esc(c.mode)}</td><td class="r">${fx(c.speedup)}</td><td class="r">${fx(c.val)}</td><td>${esc(c.note)}</td></tr>`).join("");
+const modes = {};
+C.forEach(c => { const m = modes[c.mode] ||= { n: 0, ok: 0, promo: 0, best: 0, tok: 0 }; m.n++; m.tok += c.tokens;
+  if (c.status === "ok") { m.ok++; m.best = Math.max(m.best, c.speedup); } if (c.promoted) m.promo++; });
+$("modes").innerHTML = `<tr><th>Mode</th><th class="r">Tried</th><th class="r">Correct</th><th class="r">Champions</th><th class="r">Best</th><th class="r">Tokens</th></tr>` +
+  Object.entries(modes).map(([k, m]) => `<tr><td>${esc(k)}</td><td class="r">${m.n}</td><td class="r">${m.ok}</td><td class="r">${m.promo}</td><td class="r">${fx(m.best)}</td><td class="r">${m.tok.toLocaleString()}</td></tr>`).join("");
+$("fails").innerHTML = `<tr><th>Round</th><th>Agent</th><th>Outcome</th><th>Why</th></tr>` +
+  C.filter(c => c.status !== "ok").map(c => `<tr><td class="r">${c.round}</td><td>${esc(c.mode)}</td><td><span class="pill bad">${esc(c.status.replace("_", " "))}</span></td><td class="mono" style="font-size:12px">${esc(c.error)}</td></tr>`).join("");
+$("basecode").textContent = D.baseline_code;
+$("champcode").textContent = D.champion_code;
+</script>

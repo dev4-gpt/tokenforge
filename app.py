@@ -57,6 +57,12 @@ if not docs:  # runs made before Atlas was connected live in the local JSONL log
     source = "local jsonl"
 st.sidebar.caption(f"Memory source for this run: {source}")
 df = pd.DataFrame(docs)
+if len(df):  # readable labels: "fast" / "reasoner" instead of the full model id; no temp paths
+    df["model"] = df["model"].fillna("").str.split("/").str[-1].replace({"": "unknown"})
+    df["error_snippet"] = df["error_snippet"].fillna("").str.replace(r"/\S*/(kernel\.c|run_tf\.c):", r"\1:", regex=True)
+    for c in ("dev_speedup", "val_speedup"):
+        if c in df:
+            df[c] = pd.to_numeric(df[c], errors="coerce").round(2)
 if len(df):
     left, right = st.columns(2)
     with left:

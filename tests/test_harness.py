@@ -16,6 +16,9 @@ def test_static_check_blocks_system_calls():
     assert harness.static_check('void matmul(){ system("rm -rf /"); }').startswith("blocked")
     assert harness.static_check("#include <stdio.h>\nvoid matmul(){}").startswith("blocked")
     assert harness.static_check(harness.BASELINE_KERNEL) == ""
+    # regression: a comment mentioning "execution (" was wrongly rejected in run r-20261011-170439
+    assert harness.static_check("void matmul(){ /* fast execution (NEON) */ }") == ""
+    assert harness.static_check("void matmul(){ execve(0, 0, 0); }").startswith("blocked")
     assert harness.static_check("#include <arm_neon.h>\n#include <dispatch/dispatch.h>\nvoid matmul(){}") == ""
 
 
