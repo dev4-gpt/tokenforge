@@ -1,0 +1,144 @@
+{
+ "run_id": "r-20261011-163001",
+ "started": "2026-10-11T20:30:37+00:00",
+ "models": [
+  "deepseek-ai/DeepSeek-V4.1-Flash"
+ ],
+ "baseline": {
+  "dev_tps": [
+   147.735709,
+   148.833467
+  ],
+  "val_tps": [
+   43.213898
+  ]
+ },
+ "reference_omp": {
+  "status": "ok",
+  "dev_speedup": 2.291497257932139
+ },
+ "rounds": [
+  {
+   "run_id": "r-20261011-163001",
+   "round": 1,
+   "base_dev_tps": 149.2044275,
+   "champion_dev_speedup": 6.601897295380564,
+   "champion_val_speedup": 8.529629610941598,
+   "best_dev_speedup": 6.601897295380564,
+   "n_ok": 5,
+   "n_total": 6,
+   "llm_tokens": 13576,
+   "champion_timing_spread": 0.05568239838560196,
+   "promoted_id": "665808e18a0c4bbb9abdd522ed7324d0",
+   "promoted_model": "deepseek-ai/DeepSeek-V4.1-Flash/reasoner",
+   "ts": "2026-10-11T20:32:13+00:00"
+  },
+  {
+   "run_id": "r-20261011-163001",
+   "round": 2,
+   "base_dev_tps": 147.2726255,
+   "champion_dev_speedup": 6.179661289698539,
+   "champion_val_speedup": 8.529629610941598,
+   "best_dev_speedup": 6.774109895133282,
+   "n_ok": 5,
+   "n_total": 6,
+   "llm_tokens": 28606,
+   "champion_timing_spread": 0.09203078186144925,
+   "promoted_id": null,
+   "promoted_model": null,
+   "ts": "2026-10-11T20:33:48+00:00"
+  },
+  {
+   "run_id": "r-20261011-163001",
+   "round": 3,
+   "base_dev_tps": 150.35878200000002,
+   "champion_dev_speedup": 6.271222971682905,
+   "champion_val_speedup": 8.529629610941598,
+   "best_dev_speedup": 6.5997788094372645,
+   "n_ok": 5,
+   "n_total": 6,
+   "llm_tokens": 24181,
+   "champion_timing_spread": 0.1020720724917964,
+   "promoted_id": null,
+   "promoted_model": null,
+   "ts": "2026-10-11T20:35:02+00:00"
+  },
+  {
+   "run_id": "r-20261011-163001",
+   "round": 4,
+   "base_dev_tps": 145.803905,
+   "champion_dev_speedup": 6.650811092607059,
+   "champion_val_speedup": 8.529629610941598,
+   "best_dev_speedup": 6.469015370162568,
+   "n_ok": 5,
+   "n_total": 6,
+   "llm_tokens": 30750,
+   "champion_timing_spread": 0.1289213261403896,
+   "promoted_id": null,
+   "promoted_model": null,
+   "ts": "2026-10-11T20:36:09+00:00"
+  },
+  {
+   "run_id": "r-20261011-163001",
+   "round": 5,
+   "base_dev_tps": 148.0674905,
+   "champion_dev_speedup": 5.573764571737542,
+   "champion_val_speedup": 8.529629610941598,
+   "best_dev_speedup": 6.518957858922226,
+   "n_ok": 5,
+   "n_total": 6,
+   "llm_tokens": 21482,
+   "champion_timing_spread": 0.3859566517595027,
+   "promoted_id": null,
+   "promoted_model": null,
+   "ts": "2026-10-11T20:37:21+00:00"
+  },
+  {
+   "run_id": "r-20261011-163001",
+   "round": 6,
+   "base_dev_tps": 148.038557,
+   "champion_dev_speedup": 6.570591469211459,
+   "champion_val_speedup": 8.529629610941598,
+   "best_dev_speedup": 6.490138296113638,
+   "n_ok": 5,
+   "n_total": 6,
+   "llm_tokens": 28231,
+   "champion_timing_spread": 0.05116279097898789,
+   "promoted_id": null,
+   "promoted_model": null,
+   "ts": "2026-10-11T20:38:17+00:00"
+  },
+  {
+   "run_id": "r-20261011-163001",
+   "round": 7,
+   "base_dev_tps": 145.6271885,
+   "champion_dev_speedup": 6.336314725314042,
+   "champion_val_speedup": 8.529629610941598,
+   "best_dev_speedup": 6.69805829329812,
+   "n_ok": 6,
+   "n_total": 6,
+   "llm_tokens": 27372,
+   "champion_timing_spread": 0.23556326283159484,
+   "promoted_id": null,
+   "promoted_model": null,
+   "ts": "2026-10-11T20:39:44+00:00"
+  },
+  {
+   "run_id": "r-20261011-163001",
+   "round": 8,
+   "base_dev_tps": 141.6569795,
+   "champion_dev_speedup": 6.680886210461273,
+   "champion_val_speedup": 8.529629610941598,
+   "best_dev_speedup": 6.742175495590739,
+   "n_ok": 6,
+   "n_total": 6,
+   "llm_tokens": 27111,
+   "champion_timing_spread": 0.04567776760586824,
+   "promoted_id": null,
+   "promoted_model": null,
+   "ts": "2026-10-11T20:40:45+00:00"
+  }
+ ],
+ "champion_id": "665808e18a0c4bbb9abdd522ed7324d0",
+ "champion_code": "#include <arm_neon.h>\n#include <dispatch/dispatch.h>\n#include <stdint.h>\n#include <string.h>\n#include <math.h>\n\nstatic inline float dot_neon(const float* __restrict w,\n                             const float* __restrict x, int n) {\n    float32x4_t a0 = vdupq_n_f32(0.0f);\n    float32x4_t a1 = vdupq_n_f32(0.0f);\n    float32x4_t a2 = vdupq_n_f32(0.0f);\n    float32x4_t a3 = vdupq_n_f32(0.0f);\n    int j = 0;\n    for (; j + 15 < n; j += 16) {\n        a0 = vfmaq_f32(a0, vld1q_f32(w + j),      vld1q_f32(x + j));\n        a1 = vfmaq_f32(a1, vld1q_f32(w + j + 4),  vld1q_f32(x + j + 4));\n        a2 = vfmaq_f32(a2, vld1q_f32(w + j + 8),  vld1q_f32(x + j + 8));\n        a3 = vfmaq_f32(a3, vld1q_f32(w + j + 12), vld1q_f32(x + j + 12));\n    }\n    a0 = vaddq_f32(a0, a1);\n    a2 = vaddq_f32(a2, a3);\n    a0 = vaddq_f32(a0, a2);\n    float sum = vaddvq_f32(a0);\n    for (; j < n; j++) sum += w[j] * x[j];\n    return sum;\n}\n\nvoid matmul(float* xout, float* x, float* w, int n, int d) {\n    if (d <= 0) return;\n    if (d < 48) {\n        for (int i = 0; i < d; i++)\n            xout[i] = dot_neon(w + (size_t)i * n, x, n);\n        return;\n    }\n    /* Split rows into ~2 chunks per core so GCD can load-balance. */\n    const int TARGET_CHUNKS = 24;\n    int nchunk = TARGET_CHUNKS;\n    if (nchunk > d) nchunk = d;\n    int chunk = (d + nchunk - 1) / nchunk;\n    nchunk = (d + chunk - 1) / chunk;\n\n    dispatch_apply(nchunk,\n        dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0),\n        ^(size_t t) {\n            int start = (int)t * chunk;\n            int end   = start + chunk;\n            if (end > d) end = d;\n            for (int i = start; i < end; i++) {\n                xout[i] = dot_neon(w + (size_t)i * n, x, n);\n            }\n        });\n}"
+}

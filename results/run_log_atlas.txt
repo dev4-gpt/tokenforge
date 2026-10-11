@@ -1,0 +1,1 @@
+[r-20261011-170439] memory=mongodb (vector) models=['deepseek-ai/DeepSeek-V4.1-Flash'] providers=['luminal', 'fallback']

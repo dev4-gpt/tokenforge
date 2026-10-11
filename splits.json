@@ -1,0 +1,14 @@
+{
+  "dev": [
+    {"model": "stories15M.bin", "prompt": "Once upon a time"},
+    {"model": "stories15M.bin", "prompt": "The little dog found a"}
+  ],
+  "validation": [
+    {"model": "stories42M.bin", "prompt": "Lily wanted to go to the park"}
+  ],
+  "heldout": [
+    {"model": "stories110M.bin", "prompt": "Tom had a red ball and"},
+    {"model": "stories42M.bin", "prompt": "One sunny morning, a small bird"},
+    {"model": "stories15M.bin", "prompt": "The old man walked to the river"}
+  ]
+}

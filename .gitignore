@@ -1,0 +1,6 @@
+.env
+.venv/
+models/*.bin
+results/reference.json
+__pycache__/
+*.pyc

@@ -1,0 +1,39 @@
+{
+ "run_id": "r-20261011-162519",
+ "started": "2026-10-11T20:25:56+00:00",
+ "models": [
+  "deepseek-ai/DeepSeek-V4.1-Flash"
+ ],
+ "baseline": {
+  "dev_tps": [
+   144.727273,
+   152.263374
+  ],
+  "val_tps": [
+   42.548642
+  ]
+ },
+ "reference_omp": {
+  "status": "ok",
+  "dev_speedup": 2.239841936044367
+ },
+ "rounds": [
+  {
+   "run_id": "r-20261011-162519",
+   "round": 1,
+   "base_dev_tps": 142.847763,
+   "champion_dev_speedup": 1.0382395900624142,
+   "champion_val_speedup": 1.0,
+   "best_dev_speedup": 0.0,
+   "n_ok": 0,
+   "n_total": 2,
+   "llm_tokens": 0,
+   "champion_timing_spread": 0.02665161338887933,
+   "promoted_id": null,
+   "promoted_model": null,
+   "ts": "2026-10-11T20:28:07+00:00"
+  }
+ ],
+ "champion_id": null,
+ "champion_code": "void matmul(float* xout, float* x, float* w, int n, int d) {\n    // W (d,n) @ x (n,) -> xout (d,)\n    // by far the most amount of time is spent inside this little function\n    int i;\n    #pragma omp parallel for private(i)\n    for (i = 0; i < d; i++) {\n        float val = 0.0f;\n        for (int j = 0; j < n; j++) {\n            val += w[i * n + j] * x[j];\n        }\n        xout[i] = val;\n    }\n}\n"
+}

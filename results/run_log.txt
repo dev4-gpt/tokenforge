@@ -1,0 +1,59 @@
+[r-20261011-163001] memory=jsonl models=['deepseek-ai/DeepSeek-V4.1-Flash'] providers=['luminal']
+round 0  baseline dev 148.3 tok/s | val 43.2 tok/s | upstream OpenMP reference 2.29x
+  r1 a0 deepseek-ai/DeepSeek-V4.1-Flash/fast ok             6.06x  4x unrolled NEON FMA with 4 independent accumulators to brea
+  r1 a1 deepseek-ai/DeepSeek-V4.1-Flash/reasoner ok             6.60x  GCD row-chunked parallel + 4-wide NEON FMA dot product; x st
+  r1 a2 deepseek-ai/DeepSeek-V4.1-Flash/fast ok             5.13x  4-row blocking reuses each x vector across 4 weight rows, NE
+  r1 a3 deepseek-ai/DeepSeek-V4.1-Flash/reasoner ok             3.47x  Parallelized rows via dispatch_apply_f, each row does NEON F
+  r1 a4 deepseek-ai/DeepSeek-V4.1-Flash/fast compile_error  0.00x  Replaced scalar FMA chain with 4-way NEON accumulators; swap
+  r1 a5 deepseek-ai/DeepSeek-V4.1-Flash/reasoner ok             6.04x  4 independent NEON FMA accumulators per row, unrolled 16-wid
+round 1: champion 6.60x dev | 5/6 correct | PROMOTED deepseek-ai/DeepSeek-V4.1-Flash/reasoner
+  r2 a0 deepseek-ai/DeepSeek-V4.1-Flash/fast ok             6.77x  GCD dispatch_apply over 48 row chunks on 12 cores; 4-accumul
+  r2 a1 deepseek-ai/DeepSeek-V4.1-Flash/reasoner ok             5.59x  4-row register blocking reuses each x load across 4 row accu
+  r2 a2 deepseek-ai/DeepSeek-V4.1-Flash/fast ok             6.24x  Kept GCD row chunking; widened inner dot to 8 NEON accumulat
+  r2 a3 deepseek-ai/DeepSeek-V4.1-Flash/reasoner no_code        0.00x  
+  r2 a4 deepseek-ai/DeepSeek-V4.1-Flash/fast ok             6.21x  Kept 4-accumulator NEON dot, added 8-wide tail, block helper
+  r2 a5 deepseek-ai/DeepSeek-V4.1-Flash/reasoner ok             6.54x  8 NEON FMA accumulators + 32-wide main loop lengthens the de
+round 2: champion 6.18x dev | 5/6 correct | no promotion
+  r3 a0 deepseek-ai/DeepSeek-V4.1-Flash/fast ok             5.64x  Register-blocked 4 rows/iter so each x chunk loads once and 
+  r3 a1 deepseek-ai/DeepSeek-V4.1-Flash/reasoner ok             6.58x  2-row register blocking reuses x loads across weight rows; 4
+  r3 a2 deepseek-ai/DeepSeek-V4.1-Flash/fast compile_error  0.00x  GCD apply_f with context passing n/chunk, added 4-wide tail 
+  r3 a3 deepseek-ai/DeepSeek-V4.1-Flash/reasoner ok             6.58x  Processes two rows per inner loop sharing each x load across
+  r3 a4 deepseek-ai/DeepSeek-V4.1-Flash/fast ok             6.47x  8 NEON accumulators unroll inner loop 32-wide to hide FMA la
+  r3 a5 deepseek-ai/DeepSeek-V4.1-Flash/reasoner ok             6.60x  Kept 4-accumulator NEON dot for identical numerics; raised r
+round 3: champion 6.27x dev | 5/6 correct | no promotion
+  r4 a0 deepseek-ai/DeepSeek-V4.1-Flash/fast ok             6.47x  8-accumulator NEON dot for more ILP plus 2-row interleaved b
+  r4 a1 deepseek-ai/DeepSeek-V4.1-Flash/reasoner no_code        0.00x  
+  r4 a2 deepseek-ai/DeepSeek-V4.1-Flash/fast ok             6.02x  4-row fused NEON FMA dot reusing x loads across rows, chunk 
+  r4 a3 deepseek-ai/DeepSeek-V4.1-Flash/reasoner ok             5.83x  4-row batching shares each x load across 4 FMA streams, cutt
+  r4 a4 deepseek-ai/DeepSeek-V4.1-Flash/fast ok             6.44x  Kept 4-acc NEON FMA dot, added 4-wide tail loop, raised chun
+  r4 a5 deepseek-ai/DeepSeek-V4.1-Flash/reasoner ok             5.77x  Process 4 rows per inner loop so each loaded x chunk feeds 4
+round 4: champion 6.65x dev | 5/6 correct | no promotion
+  r5 a0 deepseek-ai/DeepSeek-V4.1-Flash/fast ok             6.50x  Kept champion structure; hoisted row loop into a helper to s
+  r5 a1 deepseek-ai/DeepSeek-V4.1-Flash/reasoner ok             6.36x  2-row NEON FMA shares x loads (halves L1 traffic), same per-
+  r5 a2 deepseek-ai/DeepSeek-V4.1-Flash/fast ok             6.52x  32-wide unroll with 8 interleaved FMA accumulators to break 
+  r5 a3 deepseek-ai/DeepSeek-V4.1-Flash/reasoner ok             6.19x  Deepened to 8 NEON FMA accumulators (32 floats/iter) and 48 
+  r5 a4 deepseek-ai/DeepSeek-V4.1-Flash no_code        0.00x  
+  r5 a5 deepseek-ai/DeepSeek-V4.1-Flash/reasoner ok             6.05x  8-accumulator unrolled NEON FMA dot with software prefetch o
+round 5: champion 5.57x dev | 5/6 correct | no promotion
+  r6 a0 deepseek-ai/DeepSeek-V4.1-Flash/fast ok             6.47x  Kept 4-acc NEON FMA dot, added row-block helper, tuned chunk
+  r6 a1 deepseek-ai/DeepSeek-V4.1-Flash/reasoner ok             5.63x  8 FMA accumulators + 32-wide unroll + prefetch to hide FMA l
+  r6 a2 deepseek-ai/DeepSeek-V4.1-Flash/fast ok             6.49x  8-accumulator NEON FMA dot, 48 row chunks for GCD balance, c
+  r6 a3 deepseek-ai/DeepSeek-V4.1-Flash/reasoner no_code        0.00x  
+  r6 a4 deepseek-ai/DeepSeek-V4.1-Flash/fast ok             6.18x  8-accumulator unrolled NEON FMA dot plus 24-chunk GCD row pa
+  r6 a5 deepseek-ai/DeepSeek-V4.1-Flash/reasoner ok             6.38x  8-acc NEON FMA dot with prefetch of streaming W plus a 4-wid
+round 6: champion 6.57x dev | 5/6 correct | no promotion
+  r7 a0 deepseek-ai/DeepSeek-V4.1-Flash/fast ok             6.37x  Widened to 8 NEON accumulators to break the FMA dependency c
+  r7 a1 deepseek-ai/DeepSeek-V4.1-Flash/reasoner ok             6.70x  Kept proven 4-acc NEON FMA dot; raised dispatch chunks from 
+  r7 a2 deepseek-ai/DeepSeek-V4.1-Flash/fast ok             5.12x  4-row fused NEON dot so each x block loads once and is reuse
+  r7 a3 deepseek-ai/DeepSeek-V4.1-Flash/reasoner ok             6.08x  Two-row paired NEON dot shares x-vector loads across rows (l
+  r7 a4 deepseek-ai/DeepSeek-V4.1-Flash/fast ok             5.85x  Widened to 8 FMA accumulators with 16-wide then 4-wide NEON 
+  r7 a5 deepseek-ai/DeepSeek-V4.1-Flash/reasoner ok             5.10x  Paired-row NEON kernel feeds 8 independent FMAs and reuses x
+round 7: champion 6.34x dev | 6/6 correct | no promotion
+  r8 a0 deepseek-ai/DeepSeek-V4.1-Flash/fast ok             6.68x  Kept proven 4-acc NEON FMA dot; refactored row loop into hel
+  r8 a1 deepseek-ai/DeepSeek-V4.1-Flash/reasoner ok             5.94x  4 rows/step share one x chunk into 16 accs, cutting x loads 
+  r8 a2 deepseek-ai/DeepSeek-V4.1-Flash/fast ok             6.50x  Kept proven 4-acc NEON FMA dot and GCD dispatch, raised chun
+  r8 a3 deepseek-ai/DeepSeek-V4.1-Flash/reasoner ok             6.74x  2-row paired NEON dot sharing x loads for extra ILP, 48 chun
+  r8 a4 deepseek-ai/DeepSeek-V4.1-Flash/fast ok             6.52x  Reused 4-acc NEON dot but added a 4-row block kernel sharing
+  r8 a5 deepseek-ai/DeepSeek-V4.1-Flash/reasoner ok             5.82x  8-accumulator NEON FMA unroll to break FP dependence chain; 
+round 8: champion 6.68x dev | 6/6 correct | no promotion
+done -> /Users/aryamandev/Developer/YC/tokenforge/results/r-20261011-163001.json  champion kernel -> kernels/champion.c
