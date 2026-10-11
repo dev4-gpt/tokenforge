@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "conditions": [
+    "champion-only",
+    "history"
+  ],
+  "replicates": 2,
+  "rounds": 2,
+  "agents": 3,
+  "proposal_timeout_seconds": 60,
+  "max_minutes": 25,
+  "max_proposals": 24,
+  "provider": "luminal",
+  "initial_kernel": "baseline",
+  "runs_per_item": 3,
+  "fresh": [
+    {
+      "model": "stories15M.bin",
+      "prompt": "Mia found a tiny key beside the garden gate"
+    },
+    {
+      "model": "stories42M.bin",
+      "prompt": "Ben and his sister built a boat from leaves"
+    }
+  ],
+  "fresh_sha256": "575e0963345aaf48c422ff5bad8322a4a9c2e12a8224115d4adb034e531caa65",
+  "interpretation": "Exploratory matched-proposal comparison; token counts can differ. Two replicates do not establish a causal or statistically conclusive advantage."
+}

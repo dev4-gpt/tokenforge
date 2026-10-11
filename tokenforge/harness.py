@@ -4,6 +4,7 @@ byte-identical to the baseline, and measure tokens/sec. Agents never touch this 
 from __future__ import annotations
 
 import json
+import math
 import re
 import shutil
 import statistics
@@ -55,7 +56,14 @@ def load_splits() -> dict[str, list[Item]]:
 def static_check(code: str) -> str:
     if "matmul" not in code:
         return "no matmul function found"
-    m = BLOCKED.search(code)
+    # Recognize C comments/strings before looking for calls; do not strip text inside includes.
+    tokens = re.compile(r'/\*.*?\*/|//[^\n]*|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'', re.S)
+    comments_removed = tokens.sub(lambda m: ' ' if m.group().startswith(('/',)) else m.group(), code)
+    for header in re.findall(r'^\s*#\s*include\s*([^\n]+)', comments_removed, re.M):
+        if not re.fullmatch(r'<(arm_neon|dispatch/dispatch|stdint|string|math|stdlib)\.h>\s*', header):
+            return 'blocked construct: disallowed header'
+    calls = tokens.sub(lambda m: ' ' if m.group().startswith(('"', "'")) else m.group(), comments_removed)
+    m = BLOCKED.search(calls)
     return f"blocked construct: {m.group(0)[:60]}" if m else ""
 
 
@@ -63,7 +71,7 @@ def compile_kernel(code: str, workdir: Path, omp: bool = False) -> tuple[Path | 
     (workdir / "kernel.c").write_text(code)
     out = workdir / "run"
     cmd = ["clang", *COMPILE_FLAGS, f"-I{workdir}", "-o", str(out), str(VENDOR / "run_tf.c"), "-lm"]
-    if omp:  # reference only: upstream's own OpenMP build (make runomp)
+    if omp:  # reference only: stock runtime with OpenMP, -O3
         omp_root = "/opt/homebrew/opt/libomp"
         cmd[1:1] = ["-Xpreprocessor", "-fopenmp", f"-I{omp_root}/include"]
         cmd += [f"-L{omp_root}/lib", "-lomp"]
@@ -84,7 +92,12 @@ def run_once(binary: Path, item: Item, timeout: float = 30.0) -> tuple[str, floa
     if p.returncode != 0:
         raise RuntimeError(f"exit {p.returncode}: {p.stderr[-200:]}")
     m = re.search(r"achieved tok/s:\s*([\d.]+)", p.stderr)
-    return p.stdout, float(m.group(1)) if m else 0.0
+    if not m:
+        raise ValueError('missing throughput marker')
+    tps = float(m.group(1))
+    if not math.isfinite(tps) or tps <= 0:
+        raise ValueError('throughput must be finite and positive')
+    return p.stdout, tps
 
 
 def reference_outputs() -> dict:
@@ -117,6 +130,8 @@ def evaluate(code: str, items: list[Item], runs: int = RUNS, omp: bool = False) 
         if reason:
             return Result("rejected", error_snippet=reason)
     ref = reference_outputs()
+    if not items or runs < 1 or any(key(it) not in ref for it in items):
+        return Result('invalid_evaluation', error_snippet='missing oracle, empty items, or invalid repeat count')
     with tempfile.TemporaryDirectory() as d:
         binary, err = compile_kernel(code, Path(d), omp=omp)
         if not binary:
@@ -128,11 +143,15 @@ def evaluate(code: str, items: list[Item], runs: int = RUNS, omp: bool = False) 
 
                 try:
                     text, t = run_once(binary, it)
+                except ValueError as e:
+                    return Result('invalid_evaluation', error_snippet=str(e))
                 except subprocess.TimeoutExpired:
                     return Result("timeout", error_snippet=f"> 30s on {it.model}")
                 except RuntimeError as e:
                     return Result("crash", error_snippet=str(e)[:300])
-                expected = ref.get(key(it))
+                if not math.isfinite(t) or t <= 0:
+                    return Result('invalid_evaluation', error_snippet='invalid throughput')
+                expected = ref[key(it)]
                 if expected is not None and text != expected:
                     i = next((k for k, (a, b) in enumerate(zip(text, expected)) if a != b), min(len(text), len(expected)))
                     return Result("wrong_output",
@@ -147,7 +166,9 @@ def evaluate(code: str, items: list[Item], runs: int = RUNS, omp: bool = False) 
 
 def speedup(cand: Result, base: Result) -> float:
     """Geometric mean of per-item tok/s ratios against a baseline measured in the same round."""
-    if cand.status != "ok" or not base.tps:
+    if cand.status != 'ok' or base.status != 'ok' or not base.tps or len(cand.tps) != len(base.tps):
+        return 0.0
+    if not all(math.isfinite(t) and t > 0 for t in cand.tps + base.tps):
         return 0.0
     return statistics.geometric_mean([c / b for c, b in zip(cand.tps, base.tps)])
 

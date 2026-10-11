@@ -48,13 +48,13 @@ def main() -> None:
 
     base = harness.BASELINE_KERNEL
     b_dev, b_val = harness.evaluate(base, dev, a.runs), harness.evaluate(base, val, a.runs)
-    omp = harness.evaluate(base, dev, a.runs, omp=True)   # reference line: upstream `make runomp`
+    omp = harness.evaluate(base, dev, a.runs, omp=True)   # reference line: stock runtime with OpenMP, -O3
     state = {"run_id": run_id, "started": now(), "models": agents.models(),
              "baseline": {"dev_tps": b_dev.tps, "val_tps": b_val.tps},
              "reference_omp": {"status": omp.status, "dev_speedup": harness.speedup(omp, b_dev)},
              "rounds": [], "champion_id": None, "champion_code": base}
     print(f"round 0  baseline dev {b_dev.mean_tps:.1f} tok/s | val {b_val.mean_tps:.1f} tok/s | "
-          f"upstream OpenMP reference {state['reference_omp']['dev_speedup']:.2f}x")
+          f"OpenMP -O3 reference {state['reference_omp']['dev_speedup']:.2f}x")
 
     champ_code, champ_id, champ_tps = base, None, b_dev.mean_tps
     for r in range(1, a.rounds + 1):
@@ -73,6 +73,7 @@ def main() -> None:
             sp = harness.speedup(res, b_dev)
             doc = {"run_id": run_id, "round": r, "agent": i, "model": p.model, "provider": p.provider,
                    "strategy": p.strategy, "note": p.note, "code": p.code, "parent_id": champ_id,
+                   "prompt": p.prompt, "retrieved_ids": [m.get("_id") for m in mems[i]], "memory_context": mems[i],
                    "status": res.status, "error_snippet": res.error_snippet, "dev_tps": res.tps,
                    "dev_speedup": sp, "val_speedup": None, "promoted": False, "llm_tokens": p.tokens}
             scored.append((sp, doc))

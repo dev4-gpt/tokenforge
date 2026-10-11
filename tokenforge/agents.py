@@ -55,6 +55,7 @@ class Proposal:
     strategy: str
     error: str = ""
     tokens: int = 0
+    prompt: str = ""
 
 
 def extract_code(text: str) -> str:
@@ -84,9 +85,9 @@ def build_prompt(champion_code: str, champion_tps: float, memories: list[dict], 
     mem_lines = []
     for m in memories:
         if m.get("status") == "ok":
-            mem_lines.append(f"- WORKED ({m.get('dev_speedup') or 0:.2f}x vs baseline): {m.get('note','')}")
+            mem_lines.append(f"- [{m.get('_id', 'unknown')}] WORKED ({m.get('dev_speedup') or 0:.2f}x vs baseline): {m.get('note','')}")
         else:
-            mem_lines.append(f"- FAILED [{m.get('status')}]: {m.get('note','')} :: {(m.get('error_snippet') or '')[:200]}")
+            mem_lines.append(f"- [{m.get('_id', 'unknown')}] FAILED [{m.get('status')}]: {m.get('note','')} :: {(m.get('error_snippet') or '')[:200]}")
     mem = "\n".join(mem_lines) or "- (no history yet)"
     return (f"Current champion ({champion_tps:.1f} tok/s on dev):\n```c\n{champion_code}\n```\n\n"
             f"Relevant past attempts retrieved from team memory:\n{mem}\n\n"
@@ -99,7 +100,7 @@ MODES = {"fast": {"thinking": {"type": "disabled"}}, "reasoner": {"reasoning_eff
 
 
 def propose(agent_idx: int, round_idx: int, champion_code: str, champion_tps: float,
-            memories: list[dict], timeout: float = 240.0) -> Proposal:
+            memories: list[dict], timeout: float = 240.0, allow_fallback: bool = True, max_retries: int = 4) -> Proposal:
     ms = models()
     model = ms[agent_idx % len(ms)] if ms else ""
     mode = "fast" if agent_idx % 2 == 0 else "reasoner"
@@ -107,11 +108,13 @@ def propose(agent_idx: int, round_idx: int, champion_code: str, champion_tps: fl
     prompt = build_prompt(champion_code, champion_tps, memories, strategy)
     last_err = "no provider configured"
     for p in providers():
+        if not allow_fallback and p.name != 'luminal':
+            continue
         p_model = model if p.name == "luminal" else os.getenv("FALLBACK_MODEL", model)
         try:
             # Streaming avoids the 503s Luminal returns on long non-streamed generations;
             # max_retries backs off on 429/5xx.
-            client = OpenAI(base_url=p.base_url, api_key=p.api_key, timeout=timeout, max_retries=4)
+            client = OpenAI(base_url=p.base_url, api_key=p.api_key, timeout=timeout, max_retries=max_retries)
             stream = client.chat.completions.create(
                 model=p_model, temperature=0.8, max_tokens=8000, stream=True,
                 stream_options={"include_usage": True},
@@ -125,7 +128,7 @@ def propose(agent_idx: int, round_idx: int, champion_code: str, champion_tps: fl
                     text += chunk.choices[0].delta.content or ""
             label = f"{p_model}/{mode}" if p.name == "luminal" else p_model
             err = "" if text else "empty answer (reasoning used the whole token budget)"
-            return Proposal(extract_code(text), extract_note(text), label, p.name, strategy, error=err, tokens=used)
+            return Proposal(extract_code(text), extract_note(text), label, p.name, strategy, error=err, tokens=used, prompt=prompt)
         except Exception as e:  # try next provider
             last_err = f"{p.name}: {type(e).__name__}: {e}"[:300]
-    return Proposal("", "", model, "none", strategy, error=last_err)
+    return Proposal("", "", model, "none", strategy, error=last_err, prompt=prompt)

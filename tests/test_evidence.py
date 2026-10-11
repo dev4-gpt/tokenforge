@@ -1,0 +1,76 @@
+import json
+from pathlib import Path
+from unittest.mock import patch
+import pytest
+from tokenforge import harness
+from tokenforge.memory import Memory
+from tokenforge.reporting import load_bundle
+
+def test_comment_and_string_checks():
+    assert harness.static_check('void matmul(){ /* system( and execve( are prose */ const char *s="system("; }') == ''
+    assert harness.static_check('void matmul(){ system("true"); }').startswith('blocked')
+    assert harness.static_check('#include "other.h"\nvoid matmul(){}').startswith('blocked')
+
+def test_missing_oracle_fails_before_compile():
+    with patch.object(harness,'reference_outputs',return_value={}), patch.object(harness,'compile_kernel') as compiler:
+        result=harness.evaluate(harness.BASELINE_KERNEL,[harness.Item('x','y')],runs=1)
+    assert result.status=='invalid_evaluation'
+    compiler.assert_not_called()
+
+@pytest.mark.parametrize('throughput',[0,-1,float('inf'),float('nan')])
+def test_invalid_timing(throughput):
+    item=harness.Item('x','y')
+    with patch.object(harness,'reference_outputs',return_value={harness.key(item):'text'}), patch.object(harness,'compile_kernel',return_value=(Path('/unused'),'')),patch.object(harness,'run_once',return_value=('text',throughput)):
+        assert harness.evaluate(harness.BASELINE_KERNEL,[item],runs=1).status=='invalid_evaluation'
+
+def test_missing_timing_marker():
+    with patch.object(harness.subprocess,'run',return_value=type('Completed',(),{'returncode':0,'stdout':'text','stderr':''})()):
+        with pytest.raises(ValueError,match='missing throughput'):
+            harness.run_once(Path('/unused'),harness.Item('x','y'))
+
+def test_speedup_requires_matching_valid_measurements():
+    assert harness.speedup(harness.Result('ok',[1]),harness.Result('ok',[1,2]))==0
+    assert harness.speedup(harness.Result('ok',[1]),harness.Result('crash',[1]))==0
+
+def test_offline_bundle_and_run_matching(monkeypatch):
+    monkeypatch.delenv('MONGODB_URI',raising=False)
+    bundle=load_bundle('r-20261011-170439')
+    assert len(bundle['candidates'])==48
+    assert sum(c['promoted'] for c in bundle['candidates'])==3
+    assert all(r['n_ok']+r['n_failed']==6 for r in bundle['rounds'])
+    assert bundle['champion_stats']['count']==4
+    assert load_bundle('r-20261011-163001')['heldout'] is None
+
+def test_bundle_refuses_mismatched_counts(tmp_path):
+    root=Path(__file__).resolve().parent.parent
+    (tmp_path/'results').mkdir()
+    data=json.loads((root/'results/r-20261011-170439.json').read_text())
+    (tmp_path/'results/r-20261011-170439.json').write_text(json.dumps(data))
+    with pytest.raises(ValueError,match='counts disagree'):
+        load_bundle('r-20261011-170439',tmp_path)
+
+def test_memory_mirror_and_isolation(tmp_path):
+    mem=Memory(tmp_path/'mirror.jsonl',connect=False)
+    first=mem.add({'run_id':'a','status':'ok','note':'worked','dev_speedup':2})
+    mem.add({'run_id':'b','status':'compile_error','note':'other run'})
+    rows=mem.retrieve('worked','a')
+    assert [r['_id'] for r in rows]==[first]
+    assert rows[0]['retrieval_method']=='local'
+    assert len(mem.all())==2
+
+def test_vector_query_and_fallback_are_run_scoped(tmp_path):
+    mem=Memory(tmp_path/'mirror.jsonl',connect=False)
+    class Fake:
+        def aggregate(self,pipeline):
+            assert pipeline[0]['$vectorSearch']['filter']['run_id']=='a'
+            raise RuntimeError('not ready')
+        def find(self,q,projection):
+            assert q['run_id']=='a'
+            return Cursor()
+    class Cursor:
+        def limit(self,k): return self
+        def sort(self,*args): return self
+        def __iter__(self): return iter([])
+    mem.col=Fake()
+    with patch.object(mem,'_vector_ready',return_value=True),patch('tokenforge.memory.embed',return_value=[1.0]):
+        assert mem.retrieve('query','a')==[]

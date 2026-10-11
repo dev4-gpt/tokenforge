@@ -36,7 +36,7 @@ section { display: grid; gap: 18px; min-width: 0 }
 
 header { display: grid; gap: 16px }
 .chips { display: flex; flex-wrap: wrap; gap: 8px }
-.chip { font: 500 0.8rem/1 var(--mono); border: 1px solid var(--line); border-radius: 999px; padding: 7px 11px; background: var(--surface); color: var(--muted) }
+.chip { font: 500 0.8rem/1 var(--mono); border: 1px solid var(--line); border-radius: 999px; padding: 7px 11px; overflow-wrap:anywhere; line-height:1.4; background: var(--surface); color: var(--muted) }
 .chip b { color: var(--ink); font-weight: 500 }
 
 .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 28px; align-items: start }
@@ -61,7 +61,7 @@ svg .grid { stroke: var(--line); stroke-width: 1 }
 .two { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 18px }
 table { width: 100%; border-collapse: collapse; font-size: 0.9rem }
 th { text-align: left; font: 500 0.75rem/1.2 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--line) }
-td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top }
+td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap:anywhere }
 td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono) }
 .scroll { overflow-x: auto }
 .pill { font: 500 0.75rem/1 var(--mono); padding: 4px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap }
@@ -82,7 +82,7 @@ a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--champ); out
   <header>
     <div class="eyebrow">c0mpiled-15 · Track 1 · Self-improving agent team</div>
     <h1>TokenForge</h1>
-    <p class="muted">Six agents on Luminal rewrite the hottest function of a small LLM that runs on this laptop. A harness they cannot change keeps a kernel only if the model's output stays byte-identical, then times it. MongoDB Atlas stores every attempt so the next round can learn from it.</p>
+    <p class="muted">Six agents on Luminal rewrite the hottest function of a small LLM that runs on this laptop. A harness they cannot change keeps a kernel only if the generated text matches the baseline on tested prompts, then times it. MongoDB Atlas stores every attempt so the next round can learn from it.</p>
     <div class="chips" id="chips"></div>
   </header>
 
@@ -98,7 +98,7 @@ a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--champ); out
         <h3>Tokens per second, held-out</h3>
         <div class="legend" style="margin:10px 0 6px">
           <span class="key"><span class="sw" style="background:var(--base)"></span>Stock llama2.c (-O3)</span>
-          <span class="key"><span class="sw" style="background:var(--omp)"></span>Upstream OpenMP build</span>
+          <span class="key"><span class="sw" style="background:var(--omp)"></span>OpenMP, -O3</span>
           <span class="key"><span class="sw" style="background:var(--champ)"></span>TokenForge champion</span>
         </div>
         <div id="heldchart"></div>
@@ -110,7 +110,7 @@ a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--champ); out
     <h2 id="h-loop">One round</h2>
     <div class="loop">
       <div class="panel step"><span class="n">1 · PROPOSE</span><h3>Six agents, in parallel</h3><p class="muted">DeepSeek-V4.1-Flash on Luminal. Three run with thinking off ("fast"), three with low reasoning ("reasoner"). Each gets a different strategy hint plus memories retrieved from Atlas.</p></div>
-      <div class="panel step"><span class="n">2 · TEST</span><h3>A referee they can't touch</h3><p class="muted">Same <code>clang -O3</code> flags, unsafe code rejected, no network. Output must match the original byte for byte. Then a warm-up and the median of 5 timed runs.</p></div>
+      <div class="panel step"><span class="n">2 · TEST</span><h3>A referee they can't touch</h3><p class="muted">Same <code>clang -O3</code> flags, source restrictions checked, network denied. Generated text must match on tested greedy-decoding prompts. Then a warm-up and the median of 5 timed runs.</p></div>
       <div class="panel step"><span class="n">3 · LEARN</span><h3>Memory in MongoDB Atlas</h3><p class="muted">Every attempt is stored with an on-device embedding. A new champion must beat the old one by 5% on the 15M model and also win on the 42M model.</p></div>
     </div>
   </section>
@@ -145,9 +145,10 @@ a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--champ); out
       <div class="panel scroll"><h3>Champion lineage</h3><table id="lineage"></table></div>
       <div class="panel scroll"><h3>Fast vs reasoner</h3><table id="modes"></table></div>
     </div>
-    <div class="panel scroll"><h3>Failures the team learned from</h3><table id="fails"></table></div>
+    <div class="panel scroll"><h3>Recorded failures (historical retrieval context unrecorded)</h3><table id="fails"></table></div>
   </section>
 
+  <section aria-labelledby="h-memory"><h2 id="h-memory">Memory evidence</h2><div class="panel" id="memorytrace"></div><div class="panel" id="study"></div><div class="panel" id="comparison"></div></section>
   <section aria-labelledby="h-code">
     <h2 id="h-code">The kernel</h2>
     <div class="code">
@@ -175,16 +176,16 @@ const D = /*__DATA__*/null;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fx = (v, d = 2) => (v == null ? "—" : Number(v).toFixed(d) + "×");
-const H = D.heldout, R = D.rounds, C = D.candidates;
+const H = D.heldout || {items: [], speedup_geomean: null, omp_reference_geomean: null}, R = D.rounds, C = D.candidates;
 const short = m => m.replace(".bin", "").replace("stories", "stories ");
 
 // header chips + hero
 const tokens = R.reduce((a, r) => a + (r.llm_tokens || 0), 0);
 $("chips").innerHTML = [["Agents", D.model.split("/").pop() + " · Luminal"], ["Memory", D.memory],
   ["Device", "Apple M3 Pro"], ["Run", D.run_id]].map(([k, v]) => `<span class="chip">${k} <b>${esc(v)}</b></span>`).join("");
-$("bigx").innerHTML = `${H.speedup_geomean.toFixed(2)}<small>× faster</small>`;
-$("facts").innerHTML = [["Candidates written", C.length], ["Correct (byte-identical)", C.filter(c => c.status === "ok").length],
-  ["Luminal tokens used", tokens.toLocaleString()], ["Upstream OpenMP build, held-out", fx(H.omp_reference_geomean)]]
+$("bigx").innerHTML = `${H.speedup_geomean == null ? "—" : H.speedup_geomean.toFixed(2)}<small>× faster</small>`;
+$("facts").innerHTML = [["Candidates written", C.length], ["Passed generated-text checks", C.filter(c => c.status === "ok").length],
+  ["Luminal tokens used", tokens.toLocaleString()], ["OpenMP, -O3, held-out", fx(H.omp_reference_geomean)]]
   .map(([k, v]) => `<div class="fact"><span>${k}</span><span>${v}</span></div>`).join("");
 
 // tooltip
@@ -193,12 +194,13 @@ document.addEventListener("pointerover", e => { const t = e.target.closest("[dat
 document.addEventListener("pointermove", e => { if (tip.hidden) return; const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8); tip.style.left = x + "px"; tip.style.top = (e.clientY + 14) + "px"; });
 document.addEventListener("pointerout", e => { if (e.target.closest("[data-tip]")) tip.hidden = true; });
 
-// held-out small multiples: each model on its own scale
+// Throughput on one common linear scale for every model
 (function () {
   const W = 620, rowH = 92, padL = 128, padR = 70, bh = 14, gap = 4;
   let s = "";
+  const max = Math.max(1, ...H.items.flatMap(it => [it.champion_tps, it.omp_tps, it.baseline_tps])) * 1.12;
   H.items.forEach((it, i) => {
-    const y0 = i * rowH + 8, max = Math.max(it.champion_tps, it.omp_tps, it.baseline_tps) * 1.02;
+    const y0 = i * rowH + 8;
     const sx = v => (v / max) * (W - padL - padR);
     s += `<text class="ink" x="0" y="${y0 + 14}" style="font-weight:500">${esc(short(it.model))}</text>`;
     s += `<text x="0" y="${y0 + 32}">${(it.speedup).toFixed(2)}× faster</text>`;
@@ -215,13 +217,14 @@ document.addEventListener("pointerout", e => { if (e.target.closest("[data-tip]"
 (function () {
   const W = 640, Hh = 300, l = 64, r = 28, t = 14, b = 44, lane = 22;
   const n = R.length, ymax = Math.ceil(Math.max(...C.map(c => c.speedup), ...R.map(x => x.champion_dev_speedup)) + 0.5);
-  const sx = i => l + ((i - 1) / Math.max(n - 1, 1)) * (W - l - r);
+  const sx = i => l + (i / Math.max(n, 1)) * (W - l - r);
   const plotB = Hh - b - lane, sy = v => plotB - (v / ymax) * (plotB - t);
   let s = "";
   for (let v = 0; v <= ymax; v += 2) s += `<line class="grid" x1="${l}" x2="${W - r}" y1="${sy(v)}" y2="${sy(v)}"/><text x="${l - 8}" y="${sy(v) + 4}" text-anchor="end">${v}×</text>`;
   s += `<line x1="${l}" x2="${W - r}" y1="${sy(D.omp_dev)}" y2="${sy(D.omp_dev)}" stroke="var(--omp)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
-  s += `<text x="${W - r}" y="${sy(D.omp_dev) - 6}" text-anchor="end">upstream OpenMP ${D.omp_dev.toFixed(2)}×</text>`;
+  s += `<text x="${W - r}" y="${sy(D.omp_dev) - 6}" text-anchor="end">OpenMP -O3 ${D.omp_dev.toFixed(2)}×</text>`;
   s += `<text x="${l - 22}" y="${plotB + lane - 4}" text-anchor="end">failed</text>`;
+  s += `<text x="${sx(0)}" y="${Hh - b + 18}" text-anchor="middle">0</text>`;
   R.forEach(x => s += `<text x="${sx(x.round)}" y="${Hh - b + 18}" text-anchor="middle">${x.round}</text>`);
   s += `<text x="${(l + W - r) / 2}" y="${Hh - 6}" text-anchor="middle">round</text>`;
   C.forEach(c => {
@@ -230,15 +233,15 @@ document.addEventListener("pointerout", e => { if (e.target.closest("[data-tip]"
     if (c.status === "ok") s += `<circle cx="${x}" cy="${sy(c.speedup)}" r="5" fill="var(--champ)" fill-opacity=".35" stroke="var(--surface)" stroke-width="2" data-tip="${tipTxt}"/>`;
     else s += `<path d="M${x - 4} ${plotB + lane - 12}l8 8m0-8l-8 8" stroke="var(--fail)" stroke-width="2" fill="none"/><rect x="${x - 7}" y="${plotB + lane - 15}" width="14" height="14" fill="transparent" data-tip="${tipTxt}"/>`;
   });
-  s += `<polyline fill="none" stroke="var(--champ)" stroke-width="2" points="${R.map(x => `${sx(x.round)},${sy(x.champion_dev_speedup)}`).join(" ")}"/>`;
+  s += `<polyline fill="none" stroke="var(--champ)" stroke-width="2" points="${[[sx(0),sy(1)].join(","), ...R.map(x => `${sx(x.round)},${sy(x.champion_dev_speedup)}`)].join(" ")}"/>`;
   R.forEach(x => {
     const promo = x.promoted_model;
     s += `<circle cx="${sx(x.round)}" cy="${sy(x.champion_dev_speedup)}" r="${promo ? 7 : 4}" fill="${promo ? "var(--surface)" : "var(--champ)"}" stroke="var(--champ)" stroke-width="2.5" data-tip="round ${x.round} champion re-measured: ${fx(x.champion_dev_speedup)}${promo ? "<br>new champion (" + esc(promo.split("/").pop()) + ")" : ""}"/>`;
   });
   $("roundchart").innerHTML = `<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Speedup per candidate by round">${s}</svg>`;
-  const sp = R.map(x => x.champion_dev_speedup);
+  const sp = R.filter(x => x.champion_id === D.champion_id).map(x => x.champion_dev_speedup);
   const promos = R.filter(x => x.promoted_model).map(x => x.round);
-  $("noise").textContent = `Open circles mark new champions (rounds ${promos.join(", ")}). The same champion re-measures between ${Math.min(...sp).toFixed(2)}× and ${Math.max(...sp).toFixed(2)}× on a busy laptop, so gains after round 1 are within timing noise. The big step is round 1: NEON SIMD plus multithreading.`;
+  $("noise").textContent = `Open circles mark new champions (rounds ${promos.join(", ")}). The final champion re-measures between ${Math.min(...sp).toFixed(2)}× and ${Math.max(...sp).toFixed(2)}× on a busy laptop, so later gains require contemporaneous comparison. The big step is round 1: NEON SIMD plus multithreading.`;
 })();
 
 // correct-per-round stacked bars with a 2px surface gap
@@ -269,6 +272,10 @@ $("modes").innerHTML = `<tr><th>Mode</th><th class="r">Tried</th><th class="r">C
   Object.entries(modes).map(([k, m]) => `<tr><td>${esc(k)}</td><td class="r">${m.n}</td><td class="r">${m.ok}</td><td class="r">${m.promo}</td><td class="r">${fx(m.best)}</td><td class="r">${m.tok.toLocaleString()}</td></tr>`).join("");
 $("fails").innerHTML = `<tr><th>Round</th><th>Agent</th><th>Outcome</th><th>Why</th></tr>` +
   C.filter(c => c.status !== "ok").map(c => `<tr><td class="r">${c.round}</td><td>${esc(c.mode)}</td><td><span class="pill bad">${esc(c.status.replace("_", " "))}</span></td><td class="mono" style="font-size:12px">${esc(c.error)}</td></tr>`).join("");
+const trace = D.repair;
+$("memorytrace").innerHTML = trace ? `<h3>Stored failure → retrieved evidence → repair → evaluation</h3><p>${esc(trace.lesson?.rule || "")}</p><p>Retrieval: ${esc(trace.retrieval_method)} · Original: ${esc(trace.original_status)} · Repair: ${esc(trace.repair_status)}</p><details><summary>Evidence and exact prompt</summary><pre>${esc(JSON.stringify({source_id:trace.source_id,retrieved_ids:trace.retrieved_ids,checks:trace.checks},null,2))}</pre><pre>${esc(trace.prompt)}</pre></details>` : '<p>Historical retrieval context was not recorded. Candidate storage and lineage are inspectable; memory benefit requires new evidence.</p>';
+$("study").innerHTML = D.study ? `<h3>Exploratory memory study</h3><pre>${esc(JSON.stringify(D.study,null,2))}</pre>` : '<p>No controlled memory study recorded.</p>';
+$("comparison").innerHTML = D.comparison ? `<h3>Contemporaneous comparison</h3><pre>${esc(JSON.stringify(D.comparison.summary,null,2))}</pre>` : '<p>Historical promotions are not independent noise-controlled comparisons.</p>';
 $("basecode").textContent = D.baseline_code;
 $("champcode").textContent = D.champion_code;
 </script>

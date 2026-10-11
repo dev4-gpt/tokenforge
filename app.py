@@ -1,108 +1,130 @@
-"""TokenForge dashboard: streamlit run app.py"""
-from __future__ import annotations
-
-import json
+"""Offline-first results and research replay: streamlit run app.py."""
 from pathlib import Path
-
+import html
+import json
+import altair as alt
 import pandas as pd
 import streamlit as st
-from dotenv import load_dotenv
-
-load_dotenv(Path(__file__).parent / ".env")
-from tokenforge.memory import Memory  # noqa: E402
+from tokenforge.reporting import load_bundle, export_candidates
 
 ROOT = Path(__file__).parent
-st.set_page_config(page_title="TokenForge", layout="wide")
-st.title("TokenForge — agents that make an on-device LLM faster")
-st.caption("6 agents on Luminal (DeepSeek-V4.1-Flash, 'fast' and 'reasoner' modes) rewrite llama2.c's matmul. A fixed harness requires "
-           "byte-identical greedy output and measures tok/s on an Apple M3 Pro. MongoDB stores every attempt "
-           "and feeds relevant wins and failures into the next round.")
-
-runs = sorted((ROOT / "results").glob("r-*.json"))
-if not runs:
-    st.info("No run yet. Start one with: python evolve.py --rounds 8 --agents 6")
+st.set_page_config(page_title='TokenForge', layout='wide', initial_sidebar_state='collapsed')
+runs = sorted((ROOT / 'results').glob('r-*.json'), reverse=True)
+run_file = st.sidebar.selectbox('Run', [p.name for p in runs])
+appearance = st.sidebar.selectbox('Appearance', ['System', 'Light', 'Dark'])
+if st.sidebar.button('Refresh export from Atlas'):
+    from dotenv import load_dotenv
+    load_dotenv(ROOT / '.env')
+    try:
+        export_candidates(Path(run_file).stem)
+        st.success('Export refreshed')
+    except Exception as e:
+        st.error(f'Refresh unavailable: {type(e).__name__}')
+try:
+    data = load_bundle(Path(run_file).stem)
+except (ValueError, OSError) as e:
+    st.error(str(e))
     st.stop()
-run_file = st.sidebar.selectbox("Run", [r.name for r in reversed(runs)])
-run = json.loads((ROOT / "results" / run_file).read_text())
-rounds = pd.DataFrame(run["rounds"])
-held_path = ROOT / "results" / "heldout.json"
-held = json.loads(held_path.read_text()) if held_path.exists() else None
-if st.sidebar.button("Refresh"):
-    st.rerun()
+st.sidebar.caption('Evidence: local replay. Atlas refresh is optional.')
+dark = appearance == 'Dark'
+colors = ('#0e1116','#161a21','#eef1f5','#a3acb9','#2a313b') if dark else ('#f4f6f9','#ffffff','#121821','#566070','#dde2e9')
+bg, surface, ink, muted, line = colors
+st.markdown(f'''<style>
+[data-testid="stAppViewContainer"] {{background:{bg};color:{ink};}}
+[data-testid="stHeader"] {{background:transparent;}}
+.block-container {{max-width:1120px;padding-top:2rem;padding-bottom:3rem;}}
+h1,h2,h3,p,label {{color:{ink};}} h1 {{font-size:2.8rem!important;letter-spacing:-.04em;}}
+.hero {{background:{surface};border:1px solid {line};border-radius:12px;padding:24px;margin:16px 0 24px;}}
+.hero .big {{color:#2a78d6;font-size:clamp(2.5rem,7vw,4.5rem);font-weight:700;line-height:1.1;}}
+.hero p {{color:{muted};margin:8px 0;}}
+.facts {{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:20px;}}
+.fact {{border-top:1px solid {line};padding-top:12px;min-width:0;}}
+.fact strong {{display:block;font-size:1.4rem;}} .fact span {{color:{muted};font-size:.85rem;}}
+[data-testid="stTabs"] button p {{font-size:1rem;}}
+@media(max-width:600px) {{.block-container{{padding-left:16px;padding-right:16px;}}.facts{{grid-template-columns:1fr;}}h1{{font-size:2rem!important;}}}}
+</style>''', unsafe_allow_html=True)
+st.caption('C0MPILED-15 · LUMINAL · MONGODB ATLAS · APPLE M3 PRO')
+st.title('TokenForge')
+st.write('A research team that proposes, tests, and shares evidence to optimize local LLM inference.')
+results, experiments, memory, code = st.tabs(['Results', 'Experiments', 'Memory', 'Code'])
+candidates = pd.DataFrame(data['candidates'])
+rounds = pd.DataFrame(data['rounds'])
+held = data['heldout']
 
-# --- Scorecard mapped to the judging criteria (no blended number) ---
-base_tps = sum(run["baseline"]["dev_tps"]) / max(len(run["baseline"]["dev_tps"]), 1)
-sp = rounds["champion_dev_speedup"] if len(rounds) else pd.Series([1.0])
-champ_sp = float(sp.median())
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("Baseline (dev)", f"{base_tps:.0f} tok/s", help="stock llama2.c matmul, clang -O3")
-c2.metric("Champion (dev, median)", f"{champ_sp:.2f}x",
-          help=f"re-measured every round; range {sp.min():.2f}x-{sp.max():.2f}x (laptop timing noise)")
-c3.metric("Held-out (fresh tests)", f"{held['speedup_geomean']:.2f}x" if held else "not run yet",
-          help="stories110M + new prompts, never used while optimizing; run once")
-c4.metric("Upstream OpenMP build (reference)", f"{run['reference_omp']['dev_speedup']:.2f}x",
-          help="llama2.c's own `make runomp`, for context")
 
-st.subheader("Improvement over rounds")
-if len(rounds):
-    st.line_chart(rounds.set_index("round")[["champion_dev_speedup", "best_dev_speedup"]])
+def chart_style(chart):
+    return chart.configure(background='transparent').configure_axis(labelColor=ink,titleColor=muted,gridColor=line).configure_legend(labelColor=ink,titleColor=ink).configure_view(stroke=None)
 
-mem = Memory()
-docs = mem.all(run["run_id"])
-source = mem.backend
-if not docs:  # runs made before Atlas was connected live in the local JSONL log
-    jl = ROOT / "results" / "candidates.jsonl"
-    docs = [d for d in (json.loads(l) for l in jl.read_text().splitlines()) if d.get("run_id") == run["run_id"]] \
-        if jl.exists() else []
-    source = "local jsonl"
-st.sidebar.caption(f"Memory source for this run: {source}")
-df = pd.DataFrame(docs)
-if len(df):  # readable labels: "fast" / "reasoner" instead of the full model id; no temp paths
-    df["model"] = df["model"].fillna("").str.split("/").str[-1].replace({"": "unknown"})
-    df["error_snippet"] = df["error_snippet"].fillna("").str.replace(r"/\S*/(kernel\.c|run_tf\.c):", r"\1:", regex=True)
-    for c in ("dev_speedup", "val_speedup"):
-        if c in df:
-            df[c] = pd.to_numeric(df[c], errors="coerce").round(2)
-if len(df):
-    left, right = st.columns(2)
-    with left:
-        st.subheader("Every candidate")
-        st.scatter_chart(df, x="round", y="dev_speedup", color="status")
-    with right:
-        st.subheader("Team learning: correct candidates per round")
-        st.bar_chart(rounds.set_index("round")[["n_ok", "n_total"]])
 
-    st.subheader("Which model wins?")
-    if "llm_tokens" not in df:
-        df["llm_tokens"] = 0
-    by = df.groupby("model").agg(attempts=("status", "size"),
-                                 correct=("status", lambda s: (s == "ok").sum()),
-                                 promoted=("promoted", "sum"),
-                                 best_speedup=("dev_speedup", "max"),
-                                 llm_tokens=("llm_tokens", "sum")).reset_index()
-    st.dataframe(by, hide_index=True)
-    total_tokens = int(df["llm_tokens"].fillna(0).sum())
-    gain = (champ_sp - 1) * 100
-    st.caption(f"Luminal tokens used: {total_tokens:,}" +
-               (f" — {total_tokens / gain:,.0f} tokens per 1% speedup" if gain > 0 else ""))
+def progression():
+    rows = [{'round':0,'speedup':1.0,'event':'Baseline','champion':'baseline'}] + [
+        {'round':r['round'],'speedup':r['champion_dev_speedup'],'event':'Promotion' if r.get('promoted_id') else 'Remeasurement','champion':r['champion_id'] or 'baseline'} for r in data['rounds']]
+    frame = pd.DataFrame(rows)
+    base = alt.Chart(frame).encode(x=alt.X('round:Q',axis=alt.Axis(tickMinStep=1),title='Round'),y=alt.Y('speedup:Q',scale=alt.Scale(zero=True),title='Speedup over baseline'),tooltip=['round','speedup','event','champion'])
+    return chart_style(base.mark_line(color='#2a78d6') + base.mark_point(size=65).encode(color=alt.Color('event:N',legend=alt.Legend(title=None))))
 
-    st.subheader("Lineage of champions")
-    lin = df[df["promoted"] == True][["round", "model", "dev_speedup", "val_speedup", "note"]]  # noqa: E712
-    if len(lin):
-        st.dataframe(lin, hide_index=True)
+with results:
+    headline = f"{held['speedup_geomean']:.2f}×" if held and held.get('champion_status') == 'ok' else 'Not evaluated'
+    correct = sum(c['status']=='ok' for c in data['candidates'])
+    promoted = sum(bool(c.get('promoted')) for c in data['candidates'])
+    st.markdown(f'''<div class="hero"><div class="big">{headline}</div><p>Fresh-test speedup over the scalar baseline · matching run only</p><div class="facts"><div class="fact"><strong>{len(candidates)}</strong><span>Candidate attempts</span></div><div class="fact"><strong>{correct}</strong><span>Passed generated-text checks</span></div><div class="fact"><strong>{promoted}</strong><span>Recorded promotions</span></div></div></div>''',unsafe_allow_html=True)
+    if held:
+        values = [{'model':i['model'].replace('.bin',''),'build':build,'tok_s':i[key]} for i in held['items'] for build,key in [('Baseline','baseline_tps'),('OpenMP -O3','omp_tps'),('Champion','champion_tps')]]
+        st.subheader('Local inference throughput')
+        bars = alt.Chart(pd.DataFrame(values)).mark_bar().encode(x=alt.X('tok_s:Q',title='Tokens / second · shared scale',scale=alt.Scale(domain=[0,max(v['tok_s'] for v in values)*1.1])),y=alt.Y('model:N',title=None),yOffset='build:N',color=alt.Color('build:N',scale=alt.Scale(domain=['Baseline','OpenMP -O3','Champion'],range=['#9aa3af','#eb6834','#2a78d6']),legend=alt.Legend(title=None)),tooltip=['model','build',alt.Tooltip('tok_s:Q',format='.2f')]).properties(height=280)
+        st.altair_chart(chart_style(bars),use_container_width=True)
+        st.caption('Identical generated text on tested greedy-decoding prompts. This does not imply identical floating-point values.')
+    stats = data['champion_stats']
+    st.caption(f"Final champion on development: {stats['median']:.2f}× median, {stats['min']:.2f}–{stats['max']:.2f}× across {stats['count']} measurements of that kernel. Validation scores are historical promotion measurements.")
+    st.subheader('Performance across rounds')
+    st.altair_chart(progression(),use_container_width=True)
+    st.caption('Round 0 is the starting baseline. Each point is a measurement; fluctuations alone are not new improvements.')
+    lineage = candidates[candidates['promoted']==True] if len(candidates) else candidates
+    if len(lineage):
+        st.dataframe(lineage[['round','agent','mode','speedup','val','note']].rename(columns={'val':'validation_at_promotion'}),hide_index=True,use_container_width=True)
+    if data['comparison']:
+        st.subheader('Contemporaneous comparison')
+        st.json(data['comparison']['summary'])
+
+with experiments:
+    st.subheader('Every experiment')
+    if len(candidates):
+        dots=alt.Chart(candidates).mark_circle(size=65).encode(x=alt.X('round:Q',axis=alt.Axis(tickMinStep=1)),y=alt.Y('speedup:Q',title='Development speedup'),color='status:N',tooltip=['round','agent','mode','status','speedup','note'])
+        st.altair_chart(chart_style(dots),use_container_width=True)
+    counts=pd.DataFrame([{'round':r['round'],'outcome':out,'count':count} for r in data['rounds'] for out,count in [('Passed',r['n_ok']),('Failed',r['n_failed'])]])
+    if len(counts):
+        bars=alt.Chart(counts).mark_bar().encode(x=alt.X('round:O',title='Round'),y=alt.Y('count:Q',title='Attempts',stack='zero'),color=alt.Color('outcome:N',scale=alt.Scale(domain=['Passed','Failed'],range=['#2a78d6','#d03b3b'])),tooltip=['round','outcome','count'])
+        st.altair_chart(chart_style(bars),use_container_width=True)
+    st.caption('Passed + failed equals actual attempts. No-code/provider failures are distinct from generated-code failures.')
+    st.dataframe(candidates[['round','agent','mode','status','speedup','error']] if len(candidates) else candidates,hide_index=True,use_container_width=True)
+    if data['study']:
+        st.subheader('Exploratory memory study')
+        st.json(data['study'])
+
+with memory:
+    st.subheader('Verified feedback and shared history')
+    trace=data['repair']
+    if trace:
+        st.write('Stored failure → retrieved evidence → new repair → independent evaluation')
+        st.json({k:v for k,v in trace.items() if k not in ('original_code','repaired_code','prompt','memory_context')})
+        with st.expander('Retrieved evidence and exact prompt'):
+            st.json(trace.get('memory_context',[]))
+            st.code(trace.get('prompt',''),language='text')
+        with st.expander('Failure and repaired implementation'):
+            st.code(trace.get('original_code',''),language='c')
+            st.code(trace.get('repaired_code',''),language='c')
     else:
-        st.write("No promotion yet.")
+        st.info('Historical retrieval context was not recorded. The exported candidates establish storage and lineage, not a causal memory advantage.')
+    for agent in range(6):
+        with st.expander(f'Agent {agent} · {"fast" if agent%2==0 else "reasoner"}'):
+            records=[c for c in data['candidates'] if c['agent']==agent]
+            st.write(f'{len(records)} recorded attempts')
+            st.json([{'id':c['id'],'round':c['round'],'parent_id':c.get('parent_id'),'retrieved_ids':c.get('retrieved_ids','Not recorded historically'),'status':c['status']} for c in records])
 
-    st.subheader("Failures the team learned from")
-    st.dataframe(df[df["status"] != "ok"][["round", "model", "status", "error_snippet"]].tail(10), hide_index=True)
-
-if held:
-    st.subheader("Held-out results (run once)")
-    st.dataframe(pd.DataFrame(held["items"]), hide_index=True)
-    if held.get("forced"):
-        st.warning("The held-out test was re-run with --force.")
-
-st.subheader("Kernel: baseline vs champion")
-a, b = st.columns(2)
-a.code((ROOT / "kernels" / "baseline.c").read_text(), language="c")
-b.code(run["champion_code"], language="c")
+with code:
+    st.caption(f"Frozen champion SHA-256: {data['kernel_sha256']}")
+    with st.expander('Scalar baseline',expanded=False):
+        st.code(data['baseline_code'],language='c')
+    with st.expander('Submitted champion',expanded=False):
+        st.code(data['champion_code'],language='c')
+    st.write('Only matmul is optimized. Results concern the tested models and laptop. Model weights do not change.')
