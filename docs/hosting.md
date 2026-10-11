@@ -12,4 +12,4 @@ Vercel hosts this static judge report. The interactive Streamlit dashboard remai
 
 Repository Settings → Pages → Deploy from a branch → `main` → `/docs` → Save. The expected URL is https://dev4-gpt.github.io/tokenforge/. Verify it after deployment; this document does not claim either host has been published.
 
-Host the 90-second MP4 on YouTube as **Unlisted**. Use the report link for evidence and the YouTube watch link for the video submission field.
+The finished visual demo is public at https://www.youtube.com/watch?v=2ZHimN2vUzo (the user approved Public visibility). Use the report link for evidence and this watch link for the video submission field.

@@ -4,6 +4,8 @@
 
 Entry for c0mpiled-15 (Penn State), **Track 1 · Challenge A: Build a Self-Improving Agent Team** (powered by Luminal).
 
+[Watch the complete visual demo on YouTube](https://www.youtube.com/watch?v=2ZHimN2vUzo) · [Reproduce the video](video/README.md) · [Host the offline judge report](docs/hosting.md)
+
 ## What it does
 
 Six agents running on **Luminal Cloud** (`deepseek-ai/DeepSeek-V4.1-Flash`) repeatedly rewrite the hottest function of a small LLM: `matmul` in Karpathy's [llama2.c](https://github.com/karpathy/llama2.c). The model runs locally on an Apple M3 Pro. A fixed harness that the agents cannot change:
