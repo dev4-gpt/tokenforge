@@ -4,3 +4,4 @@ models/*.bin
 results/reference.json
 __pycache__/
 *.pyc
+aws-export/

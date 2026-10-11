@@ -143,3 +143,5 @@ The precommitted pilot completed **24 proposals**, two replicates per condition,
 ### Hosting and video
 
 GitHub Pages can serve this already-public report from branch `main`, folder `/docs` (Settings → Pages). Hosting setup is separate from code generation. The required submission video must be uploaded to an accessible video host; a local MP4 is not the submission link. See `docs/video-script.md`.
+
+An optional AWS evidence exporter is available in `scripts/publish_aws.py`. It prepares a validated, hashed report package offline by default; uploading requires an explicitly selected existing S3 bucket and AWS credentials. Live AWS deployment is not yet verified. See `docs/sponsor-integrations.md` for commands and the distinct nonprofit validation required for the Bloomerang challenge.
