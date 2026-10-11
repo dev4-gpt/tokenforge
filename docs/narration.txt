@@ -1,0 +1,15 @@
+TokenForge is a self-improving research team for faster local AI.
+
+We start with llama two C's scalar matrix kernel. Six DeepSeek agents, hosted on Luminal, explore vector instructions, loop unrolling, cache reuse, and multithreading. They propose in parallel; CPU benchmarks run sequentially.
+
+A fixed evaluator compiles proposals with the same flags, checks identical generated text on tested prompts, warms the model, and measures throughput. Promotion requires five percent improvement on development and a validation win.
+
+MongoDB Atlas stores successes and failures. Vector search retrieves a real callback-signature compilation failure. A new Luminal proposal repairs it and passes development and validation checks. Exact context, prompts, source IDs, and lineage are recorded.
+
+Across eight rounds, forty-eight attempts produce three champions. The largest gain comes in round one. Later gains remain uncertain under repeated measurements.
+
+In a separate probe, three parallel proposals finish in three point seven seconds, versus ten point seven seconds serially. All six pass development checks. This is one observed batch, not a quality advantage claim.
+
+On untouched held-out workloads, the submitted champion records seven point eight two times baseline speed. The unseen one-hundred-ten-million-parameter model rises from thirteen point nine to one-hundred-ten point three tokens per second.
+
+The dashboard, offline report, frozen hashes, and reproducible evidence are public. Propose, test, retrieve, and learn.

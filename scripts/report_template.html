@@ -150,7 +150,7 @@ a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--champ); out
     <div class="panel scroll"><h3>Recorded failures (historical retrieval context unrecorded)</h3><table id="fails"></table></div>
   </section>
 
-  <section aria-labelledby="h-memory"><h2 id="h-memory">Memory evidence</h2><div class="panel" id="memorytrace"></div><div class="panel" id="study"></div><div class="panel" id="comparison"></div></section>
+  <section aria-labelledby="h-memory"><h2 id="h-memory">Memory evidence</h2><div class="panel" id="memorytrace"></div><div class="panel" id="study"></div><div class="panel" id="comparison"></div><div class="panel" id="parallelism"></div></section>
   <section aria-labelledby="h-code">
     <h2 id="h-code">The kernel</h2>
     <div class="code">
@@ -275,6 +275,9 @@ $("modes").innerHTML = `<tr><th>Mode</th><th class="r">Tried</th><th class="r">C
   Object.entries(modes).map(([k, m]) => `<tr><td>${esc(k)}</td><td class="r">${m.n}</td><td class="r">${m.ok}</td><td class="r">${m.promo}</td><td class="r">${fx(m.best)}</td><td class="r">${m.tok.toLocaleString()}</td></tr>`).join("");
 $("fails").innerHTML = `<tr><th>Round</th><th>Agent</th><th>Outcome</th><th>Why</th></tr>` +
   C.filter(c => c.status !== "ok").map(c => `<tr><td class="r">${c.round}</td><td>${esc(c.mode)}</td><td><span class="pill bad">${esc(c.status.replace("_", " "))}</span></td><td class="mono" style="font-size:12px">${esc(c.error)}</td></tr>`).join("");
+if (D.parallelism) {
+  $("parallelism").innerHTML = `<h3>Observed proposer parallelism</h3><table><tr><th>Execution</th><th>Proposal seconds</th><th>Valid candidates</th><th>Best dev ×</th></tr>${D.parallelism.conditions.map(c=>`<tr><td>${esc(c.condition)}</td><td>${c.proposal_wall_seconds.toFixed(2)}</td><td>${c.valid_candidates}/3</td><td>${fx(Math.max(...c.proposals.map(r=>r.evaluation.dev_speedup)))}</td></tr>`).join("")}</table><p>${esc(D.parallelism.interpretation)}</p>`;
+} else { $("parallelism").style.display = 'none'; }
 const trace = D.repair;
 $("memorytrace").innerHTML = trace ? `<h3>Stored failure → retrieved evidence → repair → evaluation</h3><p>${esc(trace.lesson?.rule || "")}</p><p>Retrieval: ${esc(trace.retrieval_method)} · Original: ${esc(trace.original_status)} · Repair: ${esc(trace.repair_status)}</p><details><summary>Evidence and exact prompt</summary><pre>${esc(JSON.stringify({source_id:trace.source_id,retrieved_ids:trace.retrieved_ids,checks:trace.checks},null,2))}</pre><pre>${esc(trace.prompt)}</pre></details><details><summary>Original failure and verified repaired proposal</summary><pre>${esc(trace.original_code)}</pre><pre>${esc(trace.repaired_code)}</pre></details>` : '<p>Historical retrieval context was not recorded. Candidate storage and lineage are inspectable; memory benefit requires new evidence.</p>';
 $("study").innerHTML = D.study ? `<h3>Exploratory memory study</h3><p>${esc(D.study.interpretation)}</p><p>${D.study.proposals} proposals · Completed: ${D.study.complete} · winners frozen before fresh tests.</p><div class="table-wrap"><table><tr><th>Condition</th><th>Replicate</th><th>Passed</th><th>Fresh ×</th><th>Tokens recorded</th></tr>${D.study.conditions.map(r=>`<tr><td>${esc(r.condition)}</td><td>${r.replicate}</td><td>${r.passed}/${r.attempts}</td><td>${r.fresh_speedup===null ? "unavailable" : fx(r.fresh_speedup)}</td><td>${r.tokens.toLocaleString()}</td></tr>`).join("")}</table></div><p>${esc(D.study.token_note || "")}</p><details><summary>Protocol hashes and raw summary</summary><pre>${esc(JSON.stringify(D.study,null,2))}</pre></details>` : '<p>No controlled memory study recorded.</p>';

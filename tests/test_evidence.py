@@ -121,3 +121,12 @@ def test_bundle_refuses_changed_champion(tmp_path):
     (tmp_path/f'results/{identity}.json').write_text(json.dumps(data))
     with pytest.raises(ValueError,match='champion code'):
         load_bundle(identity,tmp_path)
+
+
+def test_parallel_probe_is_recorded_and_scoped():
+    bundle=load_bundle('r-20261011-170439')
+    probe=bundle['parallelism']
+    assert probe['complete']
+    assert [c['valid_candidates'] for c in probe['conditions']]==[3,3]
+    assert all(r['provider']=='luminal' for c in probe['conditions'] for r in c['proposals'])
+    assert load_bundle('r-20261011-163001')['parallelism'] is None

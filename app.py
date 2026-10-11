@@ -93,6 +93,12 @@ with results:
         with st.expander('Raw comparison summary'):
             st.json(summary)
 
+    if data['parallelism']:
+        st.subheader('Observed proposer parallelism')
+        probe=data['parallelism']
+        st.dataframe(pd.DataFrame([{'Execution':c['condition'],'Proposal seconds':c['proposal_wall_seconds'],'Valid candidates':c['valid_candidates'],'Best dev ×':max(r['evaluation']['dev_speedup'] for r in c['proposals'])} for c in probe['conditions']]),hide_index=True,use_container_width=True,column_config={'Proposal seconds':st.column_config.NumberColumn(format='%.2f'),'Best dev ×':st.column_config.NumberColumn(format='%.2f')})
+        st.caption(probe['interpretation'])
+
 with experiments:
     st.subheader('Every experiment')
     if len(candidates):

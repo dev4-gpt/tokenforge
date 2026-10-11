@@ -1,0 +1,164 @@
+{
+  "started_utc": "2026-10-11T23:02:46.641061+00:00",
+  "source_run_id": "r-20261011-170439",
+  "baseline_sha256": "9195810c7ef1ad1665e6b9b5bcea1f97bec7b769b9ab5e69ccdf1c08b9b67ab0",
+  "conditions": [
+    {
+      "condition": "parallel",
+      "proposal_wall_seconds": 3.728771541034803,
+      "proposals": [
+        {
+          "agent": 0,
+          "start_seconds": 0.00025604100665077567,
+          "end_seconds": 3.137119416031055,
+          "duration_seconds": 3.1368633750244044,
+          "code": "#include <arm_neon.h>\n#include <stdint.h>\n#include <string.h>\n#include <math.h>\n#include <stdlib.h>\n\nvoid matmul(float* xout, float* x, float* w, int n, int d) {\n    int j = 0;\n    int n4 = n & ~3;\n\n    for (int i = 0; i < d; i++) {\n        const float* wp = w + (size_t)i * (size_t)n;\n        float32x4_t a0 = vdupq_n_f32(0.0f);\n        float32x4_t a1 = vdupq_n_f32(0.0f);\n        float32x4_t a2 = vdupq_n_f32(0.0f);\n        float32x4_t a3 = vdupq_n_f32(0.0f);\n\n        for (j = 0; j + 16 <= n4; j += 16) {\n            a0 = vfmaq_f32(a0, vld1q_f32(wp + j),      vld1q_f32(x + j));\n            a1 = vfmaq_f32(a1, vld1q_f32(wp + j + 4),  vld1q_f32(x + j + 4));\n            a2 = vfmaq_f32(a2, vld1q_f32(wp + j + 8),  vld1q_f32(x + j + 8));\n            a3 = vfmaq_f32(a3, vld1q_f32(wp + j + 12), vld1q_f32(x + j + 12));\n        }\n        for (; j < n4; j += 4) {\n            a0 = vfmaq_f32(a0, vld1q_f32(wp + j), vld1q_f32(x + j));\n        }\n        a0 = vaddq_f32(a0, a1);\n        a2 = vaddq_f32(a2, a3);\n        a0 = vaddq_f32(a0, a2);\n\n        float val = vaddvq_f32(a0);\n        for (; j < n; j++) val += wp[j] * x[j];\n        xout[i] = val;\n    }\n}",
+          "note": "NEON 4-accumulator FMA dot product, 16-wide unrolled, scalar tail; single-threaded.",
+          "model": "deepseek-ai/DeepSeek-V4.1-Flash/fast",
+          "provider": "luminal",
+          "strategy": "Use ARM NEON intrinsics (arm_neon.h) with 4 independent float32x4 accumulators per row.",
+          "error": "",
+          "tokens": 1010,
+          "prompt": "Current champion (0.0 tok/s on dev):\n```c\nvoid matmul(float* xout, float* x, float* w, int n, int d) {\n    // W (d,n) @ x (n,) -> xout (d,)\n    // by far the most amount of time is spent inside this little function\n    int i;\n    #pragma omp parallel for private(i)\n    for (i = 0; i < d; i++) {\n        float val = 0.0f;\n        for (int j = 0; j < n; j++) {\n            val += w[i * n + j] * x[j];\n        }\n        xout[i] = val;\n    }\n}\n\n```\n\nRelevant past attempts retrieved from team memory:\n- (no history yet)\n\nYour angle this round: Use ARM NEON intrinsics (arm_neon.h) with 4 independent float32x4 accumulators per row.\nWrite an improved full implementation.",
+          "evaluation": {
+            "status": "ok",
+            "tps": [
+              514.211886,
+              412.026726
+            ],
+            "dev_speedup": 3.3913800821080775,
+            "error": ""
+          }
+        },
+        {
+          "agent": 2,
+          "start_seconds": 0.00031712499912828207,
+          "end_seconds": 3.7281240000156686,
+          "duration_seconds": 3.7278068750165403,
+          "code": "#include <arm_neon.h>\n#include <dispatch/dispatch.h>\n#include <stdint.h>\n\nvoid matmul(float* xout, float* x, float* w, int n, int d) {\n    // W (d,n) @ x (n,) -> xout (d,)\n    // Parallelize output rows via GCD; vectorize inner dot product with NEON.\n    dispatch_apply(d, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t i) {\n        const float* wp = w + (size_t)i * (size_t)n;\n        float val = 0.0f;\n        int j = 0;\n        if (n >= 16) {\n            float32x4_t a0 = vdupq_n_f32(0.0f);\n            float32x4_t a1 = vdupq_n_f32(0.0f);\n            float32x4_t a2 = vdupq_n_f32(0.0f);\n            float32x4_t a3 = vdupq_n_f32(0.0f);\n            for (; j + 16 <= n; j += 16) {\n                float32x4_t x0 = vld1q_f32(x + j);\n                float32x4_t x1 = vld1q_f32(x + j + 4);\n                float32x4_t x2 = vld1q_f32(x + j + 8);\n                float32x4_t x3 = vld1q_f32(x + j + 12);\n                a0 = vfmaq_f32(a0, vld1q_f32(wp + j), x0);\n                a1 = vfmaq_f32(a1, vld1q_f32(wp + j + 4), x1);\n                a2 = vfmaq_f32(a2, vld1q_f32(wp + j + 8), x2);\n                a3 = vfmaq_f32(a3, vld1q_f32(wp + j + 12), x3);\n            }\n            a0 = vaddq_f32(a0, a1);\n            a2 = vaddq_f32(a2, a3);\n            a0 = vaddq_f32(a0, a2);\n            val = vaddvq_f32(a0);\n        }\n        for (; j < n; j++) {\n            val += wp[j] * x[j];\n        }\n        xout[i] = val;\n    });\n}",
+          "note": "GCD dispatch_apply over rows + NEON FMA dot products with 4 accumulators to hide latency.",
+          "model": "deepseek-ai/DeepSeek-V4.1-Flash/fast",
+          "provider": "luminal",
+          "strategy": "Parallelize over output rows with Grand Central Dispatch dispatch_apply (dispatch/dispatch.h), chunking rows.",
+          "error": "",
+          "tokens": 1049,
+          "prompt": "Current champion (0.0 tok/s on dev):\n```c\nvoid matmul(float* xout, float* x, float* w, int n, int d) {\n    // W (d,n) @ x (n,) -> xout (d,)\n    // by far the most amount of time is spent inside this little function\n    int i;\n    #pragma omp parallel for private(i)\n    for (i = 0; i < d; i++) {\n        float val = 0.0f;\n        for (int j = 0; j < n; j++) {\n            val += w[i * n + j] * x[j];\n        }\n        xout[i] = val;\n    }\n}\n\n```\n\nRelevant past attempts retrieved from team memory:\n- (no history yet)\n\nYour angle this round: Parallelize over output rows with Grand Central Dispatch dispatch_apply (dispatch/dispatch.h), chunking rows.\nWrite an improved full implementation.",
+          "evaluation": {
+            "status": "ok",
+            "tps": [
+              368.518519,
+              362.035225
+            ],
+            "dev_speedup": 2.691211244060862,
+            "error": ""
+          }
+        },
+        {
+          "agent": 4,
+          "start_seconds": 0.0005255410214886069,
+          "end_seconds": 3.2843832499929704,
+          "duration_seconds": 3.2838577089714818,
+          "code": "#include <arm_neon.h>\n#include <dispatch/dispatch.h>\n#include <stdint.h>\n\nvoid matmul(float* xout, float* x, float* w, int n, int d) {\n    dispatch_apply(d, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t i) {\n        const float* row = w + (size_t)i * (size_t)n;\n        int j = 0;\n        float32x4_t acc0 = vdupq_n_f32(0.0f);\n        float32x4_t acc1 = vdupq_n_f32(0.0f);\n        float32x4_t acc2 = vdupq_n_f32(0.0f);\n        float32x4_t acc3 = vdupq_n_f32(0.0f);\n        for (; j + 16 <= n; j += 16) {\n            float32x4_t x0 = vld1q_f32(x + j);\n            float32x4_t x1 = vld1q_f32(x + j + 4);\n            float32x4_t x2 = vld1q_f32(x + j + 8);\n            float32x4_t x3 = vld1q_f32(x + j + 12);\n            acc0 = vfmaq_f32(acc0, vld1q_f32(row + j), x0);\n            acc1 = vfmaq_f32(acc1, vld1q_f32(row + j + 4), x1);\n            acc2 = vfmaq_f32(acc2, vld1q_f32(row + j + 8), x2);\n            acc3 = vfmaq_f32(acc3, vld1q_f32(row + j + 12), x3);\n        }\n        for (; j + 4 <= n; j += 4) {\n            acc0 = vfmaq_f32(acc0, vld1q_f32(row + j), vld1q_f32(x + j));\n        }\n        float32x4_t s = vaddq_f32(vaddq_f32(acc0, acc1), vaddq_f32(acc2, acc3));\n        float val = vaddvq_f32(s);\n        for (; j < n; j++) {\n            val += row[j] * x[j];\n        }\n        xout[i] = val;\n    });\n}",
+          "note": "dispatch_apply over rows with NEON FMA (4 accumulators, 16-wide unroll), scalar tail.",
+          "model": "deepseek-ai/DeepSeek-V4.1-Flash/fast",
+          "provider": "luminal",
+          "strategy": "Combine multithreading over rows (dispatch_apply) with NEON SIMD inside each row.",
+          "error": "",
+          "tokens": 1036,
+          "prompt": "Current champion (0.0 tok/s on dev):\n```c\nvoid matmul(float* xout, float* x, float* w, int n, int d) {\n    // W (d,n) @ x (n,) -> xout (d,)\n    // by far the most amount of time is spent inside this little function\n    int i;\n    #pragma omp parallel for private(i)\n    for (i = 0; i < d; i++) {\n        float val = 0.0f;\n        for (int j = 0; j < n; j++) {\n            val += w[i * n + j] * x[j];\n        }\n        xout[i] = val;\n    }\n}\n\n```\n\nRelevant past attempts retrieved from team memory:\n- (no history yet)\n\nYour angle this round: Combine multithreading over rows (dispatch_apply) with NEON SIMD inside each row.\nWrite an improved full implementation.",
+          "evaluation": {
+            "status": "ok",
+            "tps": [
+              418.067227,
+              478.036176
+            ],
+            "dev_speedup": 3.2937919187121527,
+            "error": ""
+          }
+        }
+      ],
+      "valid_candidates": 3,
+      "recorded_tokens": 3095
+    },
+    {
+      "condition": "serial",
+      "proposal_wall_seconds": 10.696096332976595,
+      "proposals": [
+        {
+          "agent": 0,
+          "start_seconds": 2.4999608285725117e-06,
+          "end_seconds": 3.1554869579849765,
+          "duration_seconds": 3.155484458024148,
+          "code": "#include <arm_neon.h>\n#include <stdint.h>\n\nvoid matmul(float* xout, float* x, float* w, int n, int d) {\n    int j = 0;\n    for (int i = 0; i < d; i++) {\n        const float* wp = w + (size_t)i * (size_t)n;\n        float32x4_t a0 = vdupq_n_f32(0.0f);\n        float32x4_t a1 = vdupq_n_f32(0.0f);\n        float32x4_t a2 = vdupq_n_f32(0.0f);\n        float32x4_t a3 = vdupq_n_f32(0.0f);\n        int jj = 0;\n        for (; jj + 16 <= n; jj += 16) {\n            float32x4_t x0 = vld1q_f32(x + jj);\n            float32x4_t x1 = vld1q_f32(x + jj + 4);\n            float32x4_t x2 = vld1q_f32(x + jj + 8);\n            float32x4_t x3 = vld1q_f32(x + jj + 12);\n            a0 = vfmaq_f32(a0, vld1q_f32(wp + jj), x0);\n            a1 = vfmaq_f32(a1, vld1q_f32(wp + jj + 4), x1);\n            a2 = vfmaq_f32(a2, vld1q_f32(wp + jj + 8), x2);\n            a3 = vfmaq_f32(a3, vld1q_f32(wp + jj + 12), x3);\n        }\n        for (; jj + 4 <= n; jj += 4) {\n            a0 = vfmaq_f32(a0, vld1q_f32(wp + jj), vld1q_f32(x + jj));\n        }\n        float32x4_t s = vaddq_f32(vaddq_f32(a0, a1), vaddq_f32(a2, a3));\n        float sum = vaddvq_f32(s);\n        for (; jj < n; jj++) {\n            sum += wp[jj] * x[jj];\n        }\n        xout[i] = sum;\n    }\n    (void)j;\n}",
+          "note": "Four float32x4 FMA accumulators per row, unrolled 16-wide, scalar tail; summation order grouped then reduced.",
+          "model": "deepseek-ai/DeepSeek-V4.1-Flash/fast",
+          "provider": "luminal",
+          "strategy": "Use ARM NEON intrinsics (arm_neon.h) with 4 independent float32x4 accumulators per row.",
+          "error": "",
+          "tokens": 1053,
+          "prompt": "Current champion (0.0 tok/s on dev):\n```c\nvoid matmul(float* xout, float* x, float* w, int n, int d) {\n    // W (d,n) @ x (n,) -> xout (d,)\n    // by far the most amount of time is spent inside this little function\n    int i;\n    #pragma omp parallel for private(i)\n    for (i = 0; i < d; i++) {\n        float val = 0.0f;\n        for (int j = 0; j < n; j++) {\n            val += w[i * n + j] * x[j];\n        }\n        xout[i] = val;\n    }\n}\n\n```\n\nRelevant past attempts retrieved from team memory:\n- (no history yet)\n\nYour angle this round: Use ARM NEON intrinsics (arm_neon.h) with 4 independent float32x4 accumulators per row.\nWrite an improved full implementation.",
+          "evaluation": {
+            "status": "ok",
+            "tps": [
+              540.76087,
+              456.790123
+            ],
+            "dev_speedup": 3.661876534746631,
+            "error": ""
+          }
+        },
+        {
+          "agent": 2,
+          "start_seconds": 3.155501124972943,
+          "end_seconds": 7.415491666994058,
+          "duration_seconds": 4.259990542021114,
+          "code": "#include <arm_neon.h>\n#include <dispatch/dispatch.h>\n#include <stdint.h>\n\n// Process a chunk of rows [r0, r1) of W (d,n) @ x (n,) -> xout (d,)\nstatic void matmul_rows(float* xout, const float* x, const float* w,\n                        int n, int r0, int r1) {\n    const int n4 = n & ~3;\n    for (int i = r0; i < r1; i++) {\n        const float* wp = w + (size_t)i * n;\n        float32x4_t acc0 = vdupq_n_f32(0.0f);\n        float32x4_t acc1 = vdupq_n_f32(0.0f);\n        int j = 0;\n        for (; j < n4; j += 8) {\n            float32x4_t w0 = vld1q_f32(wp + j);\n            float32x4_t w1 = vld1q_f32(wp + j + 4);\n            float32x4_t x0 = vld1q_f32(x + j);\n            float32x4_t x1 = vld1q_f32(x + j + 4);\n            acc0 = vfmaq_f32(acc0, w0, x0);\n            acc1 = vfmaq_f32(acc1, w1, x1);\n        }\n        for (; j < n4; j += 4) {\n            float32x4_t w0 = vld1q_f32(wp + j);\n            float32x4_t x0 = vld1q_f32(x + j);\n            acc0 = vfmaq_f32(acc0, w0, x0);\n        }\n        float32x4_t acc = vaddq_f32(acc0, acc1);\n        float val = vaddvq_f32(acc);\n        for (; j < n; j++) {\n            val += wp[j] * x[j];\n        }\n        xout[i] = val;\n    }\n}\n\nvoid matmul(float* xout, float* x, float* w, int n, int d) {\n    if (d <= 0) return;\n    const int chunk = 8;\n    const int nchunks = (d + chunk - 1) / chunk;\n    if (nchunks <= 1) {\n        matmul_rows(xout, x, w, n, 0, d);\n        return;\n    }\n    dispatch_apply(nchunks, DISPATCH_APPLY_AUTO, ^(size_t c) {\n        int r0 = (int)c * chunk;\n        int r1 = r0 + chunk;\n        if (r1 > d) r1 = d;\n        matmul_rows(xout, x, w, n, r0, r1);\n    });\n}",
+          "note": "GCD dispatch_apply over 8-row chunks plus NEON FMA with 8-way unrolled dot products.",
+          "model": "deepseek-ai/DeepSeek-V4.1-Flash/fast",
+          "provider": "luminal",
+          "strategy": "Parallelize over output rows with Grand Central Dispatch dispatch_apply (dispatch/dispatch.h), chunking rows.",
+          "error": "",
+          "tokens": 1130,
+          "prompt": "Current champion (0.0 tok/s on dev):\n```c\nvoid matmul(float* xout, float* x, float* w, int n, int d) {\n    // W (d,n) @ x (n,) -> xout (d,)\n    // by far the most amount of time is spent inside this little function\n    int i;\n    #pragma omp parallel for private(i)\n    for (i = 0; i < d; i++) {\n        float val = 0.0f;\n        for (int j = 0; j < n; j++) {\n            val += w[i * n + j] * x[j];\n        }\n        xout[i] = val;\n    }\n}\n\n```\n\nRelevant past attempts retrieved from team memory:\n- (no history yet)\n\nYour angle this round: Parallelize over output rows with Grand Central Dispatch dispatch_apply (dispatch/dispatch.h), chunking rows.\nWrite an improved full implementation.",
+          "evaluation": {
+            "status": "ok",
+            "tps": [
+              418.947368,
+              627.118644
+            ],
+            "dev_speedup": 3.776567968745777,
+            "error": ""
+          }
+        },
+        {
+          "agent": 4,
+          "start_seconds": 7.415510374994483,
+          "end_seconds": 10.696073332976084,
+          "duration_seconds": 3.2805629579816014,
+          "code": "#include <arm_neon.h>\n#include <dispatch/dispatch.h>\n#include <stdint.h>\n\nvoid matmul(float* xout, float* x, float* w, int n, int d) {\n    dispatch_apply((size_t)d, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t i) {\n        const float* wp = w + i * (size_t)n;\n        float32x4_t acc0 = vdupq_n_f32(0.0f);\n        float32x4_t acc1 = vdupq_n_f32(0.0f);\n        int j = 0;\n        for (; j + 8 <= n; j += 8) {\n            float32x4_t w0 = vld1q_f32(wp + j);\n            float32x4_t w1 = vld1q_f32(wp + j + 4);\n            float32x4_t x0 = vld1q_f32(x + j);\n            float32x4_t x1 = vld1q_f32(x + j + 4);\n            acc0 = vfmaq_f32(acc0, w0, x0);\n            acc1 = vfmaq_f32(acc1, w1, x1);\n        }\n        for (; j + 4 <= n; j += 4) {\n            acc0 = vfmaq_f32(acc0, vld1q_f32(wp + j), vld1q_f32(x + j));\n        }\n        float val = vaddvq_f32(vaddq_f32(acc0, acc1));\n        for (; j < n; j++) val += wp[j] * x[j];\n        xout[i] = val;\n    });\n}",
+          "note": "dispatch_apply over rows with NEON FMA, two accumulators unrolled by 8 for ILP.",
+          "model": "deepseek-ai/DeepSeek-V4.1-Flash/fast",
+          "provider": "luminal",
+          "strategy": "Combine multithreading over rows (dispatch_apply) with NEON SIMD inside each row.",
+          "error": "",
+          "tokens": 885,
+          "prompt": "Current champion (0.0 tok/s on dev):\n```c\nvoid matmul(float* xout, float* x, float* w, int n, int d) {\n    // W (d,n) @ x (n,) -> xout (d,)\n    // by far the most amount of time is spent inside this little function\n    int i;\n    #pragma omp parallel for private(i)\n    for (i = 0; i < d; i++) {\n        float val = 0.0f;\n        for (int j = 0; j < n; j++) {\n            val += w[i * n + j] * x[j];\n        }\n        xout[i] = val;\n    }\n}\n\n```\n\nRelevant past attempts retrieved from team memory:\n- (no history yet)\n\nYour angle this round: Combine multithreading over rows (dispatch_apply) with NEON SIMD inside each row.\nWrite an improved full implementation.",
+          "evaluation": {
+            "status": "ok",
+            "tps": [
+              309.486781,
+              358.527132
+            ],
+            "dev_speedup": 2.4542838037959407,
+            "error": ""
+          }
+        }
+      ],
+      "valid_candidates": 3,
+      "recorded_tokens": 3068
+    }
+  ],
+  "complete": true,
+  "wall_ratio_serial_over_parallel": 2.8685308861824854,
+  "interpretation": "One matched three-proposal batch per arm, parallel first. This measures observed proposal latency and validity, not a causal quality advantage or a six-agent scaling estimate. CPU evaluations remain sequential. No kernel was promoted."
+}

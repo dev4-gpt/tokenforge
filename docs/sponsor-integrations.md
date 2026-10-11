@@ -25,7 +25,7 @@ The implementation uses the normal AWS credential chain. Never paste access keys
 
 Uploads verify all local bytes first, use content-addressed keys and conditional writes, and put the manifest last as a completion marker. Repeated uploads check existing object hash metadata. No bucket, ACL, policy, identity or paid compute instance is created. Existing bucket encryption settings apply. IAM access needs `s3:PutObject` and `s3:GetObject` on the chosen `tokenforge/evidence/*` object prefix; a bucket requiring KMS encryption may need its corresponding KMS permissions. Storage and request charges depend on the account's pricing.
 
-The event lists AWS under Track 2 as best use of AWS. A working evidence archive adds useful infrastructure, but hosting alone is not evidence of a strong prize entry. Account registration and any day-of AWS-specific conditions still need to be checked with organizers.
+The organizer clarification supplied on October 11 specifically mentions AWS's payment system for the AWS track. This S3 archive does not demonstrate that system and does not establish AWS prize eligibility. The exact payment product is unspecified; organizers must identify it before implementation. No AWS payment integration, invoice, sale or letter of intent has been completed. Account registration and other day-of conditions still apply.
 
 References: [S3 conditional uploads](https://docs.aws.amazon.com/boto3/latest/reference/services/s3/client/put_object.html), [presigned URLs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ShareObjectPreSignedURL.html), [event listing](https://luma.com/compiled-jjvw).
 

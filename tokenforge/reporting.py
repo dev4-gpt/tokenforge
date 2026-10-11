@@ -89,13 +89,15 @@ def load_bundle(run_id: str | None = None, root: Path = ROOT) -> dict:
                       "val": row.get("val_speedup"), "error": clean_error(row.get("error_snippet", "")),
                       "tokens": row.get("llm_tokens", 0)})
     extra = {}
-    for name, relative in {"repair": "learning-study/repair.json", "study": "learning-study/summary.json", "comparison": "comparison.json"}.items():
+    for name, relative in {"repair": "learning-study/repair.json", "study": "learning-study/summary.json", "comparison": "comparison.json", "parallelism": "parallelism.json"}.items():
         artifact = root / "results" / relative
         extra[name] = json.loads(artifact.read_text()) if artifact.exists() else None
     if extra['repair'] and extra['repair'].get('source_run_id') != run_id:
         extra['repair'] = None
     if extra['comparison'] and extra['comparison'].get('run_id') != run_id:
         extra['comparison'] = None
+    if extra['parallelism'] and extra['parallelism'].get('source_run_id') != run_id:
+        extra['parallelism'] = None
     return {"run_id": run_id, "run_file": path.name, "model": run["models"][0] if run["models"] else "",
             "baseline": run["baseline"], "omp_dev": run["reference_omp"]["dev_speedup"], "rounds": rounds,
             "candidates": cands, "heldout": held, "memory": "Atlas export / local replay",
