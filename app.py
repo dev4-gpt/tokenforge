@@ -14,7 +14,7 @@ from tokenforge.memory import Memory  # noqa: E402
 ROOT = Path(__file__).parent
 st.set_page_config(page_title="TokenForge", layout="wide")
 st.title("TokenForge — agents that make an on-device LLM faster")
-st.caption("6 agents on Luminal (DeepSeek + GLM Flash) rewrite llama2.c's matmul. A fixed harness requires "
+st.caption("6 agents on Luminal (DeepSeek-V4.1-Flash, 'fast' and 'reasoner' modes) rewrite llama2.c's matmul. A fixed harness requires "
            "byte-identical greedy output and measures tok/s on an Apple M3 Pro. MongoDB stores every attempt "
            "and feeds relevant wins and failures into the next round.")
 
@@ -32,10 +32,12 @@ if st.sidebar.button("Refresh"):
 
 # --- Scorecard mapped to the judging criteria (no blended number) ---
 base_tps = sum(run["baseline"]["dev_tps"]) / max(len(run["baseline"]["dev_tps"]), 1)
-champ_sp = rounds["champion_dev_speedup"].iloc[-1] if len(rounds) else 1.0
+sp = rounds["champion_dev_speedup"] if len(rounds) else pd.Series([1.0])
+champ_sp = float(sp.median())
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Baseline (dev)", f"{base_tps:.0f} tok/s", help="stock llama2.c matmul, clang -O3")
-c2.metric("Champion (dev)", f"{champ_sp:.2f}x")
+c2.metric("Champion (dev, median)", f"{champ_sp:.2f}x",
+          help=f"re-measured every round; range {sp.min():.2f}x-{sp.max():.2f}x (laptop timing noise)")
 c3.metric("Held-out (fresh tests)", f"{held['speedup_geomean']:.2f}x" if held else "not run yet",
           help="stories110M + new prompts, never used while optimizing; run once")
 c4.metric("Upstream OpenMP build (reference)", f"{run['reference_omp']['dev_speedup']:.2f}x",
