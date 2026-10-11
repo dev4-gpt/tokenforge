@@ -67,21 +67,23 @@ td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; font-family:
 .pill { font: 500 0.75rem/1 var(--mono); padding: 4px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap }
 .pill.ok { color: var(--good) } .pill.bad { color: var(--fail) }
 .code { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 14px }
-pre { margin: 0; background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 14px; overflow: auto; max-height: 460px; font: 12px/1.5 var(--mono) }
+.code > div { min-width: 0 }
+pre { min-width:0;max-width:100%;margin: 0; background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 14px; overflow: auto; max-height: 460px; font: 12px/1.5 var(--mono) }
 .limits { display: grid; gap: 8px; padding-left: 1.1em; margin: 0 }
 .callout { border-left: 3px solid var(--omp); padding: 4px 0 4px 14px; color: var(--muted) }
-#tip { position: fixed; pointer-events: none; z-index: 10; background: var(--ink); color: var(--bg); font: 12px/1.45 var(--mono); padding: 8px 10px; border-radius: 6px; max-width: 320px }
+#tip { white-space:pre-line; position: fixed; pointer-events: none; z-index: 10; background: var(--ink); color: var(--bg); font: 12px/1.45 var(--mono); padding: 8px 10px; border-radius: 6px; max-width: 320px }
 a { color: var(--champ) }
+button {width:fit-content;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px 12px;cursor:pointer;}
 a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--champ); outline-offset: 2px }
 
-@media (max-width: 760px) { .hero, .two, .code, .loop { grid-template-columns: 1fr } .wrap { gap: 44px } }
+@media (max-width: 760px) { .hero, .two, .code, .loop { grid-template-columns: minmax(0, 1fr) } .wrap { gap: 44px } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important } }
 </style>
 
 <div class="wrap">
   <header>
     <div class="eyebrow">c0mpiled-15 · Track 1 · Self-improving agent team</div>
-    <h1>TokenForge</h1>
+    <h1>TokenForge</h1><button id="theme" aria-label="Switch appearance">Switch appearance</button>
     <p class="muted">Six agents on Luminal rewrite the hottest function of a small LLM that runs on this laptop. A harness they cannot change keeps a kernel only if the generated text matches the baseline on tested prompts, then times it. MongoDB Atlas stores every attempt so the next round can learn from it.</p>
     <div class="chips" id="chips"></div>
   </header>
@@ -173,6 +175,7 @@ a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--champ); out
 
 <script>
 const D = /*__DATA__*/null;
+document.getElementById('theme').addEventListener('click', () => { const current = document.documentElement.dataset.theme; const dark = current === 'dark' || (current !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches); document.documentElement.dataset.theme = dark ? 'light' : 'dark'; });
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fx = (v, d = 2) => (v == null ? "—" : Number(v).toFixed(d) + "×");
@@ -190,7 +193,7 @@ $("facts").innerHTML = [["Candidates written", C.length], ["Passed generated-tex
 
 // tooltip
 const tip = $("tip");
-document.addEventListener("pointerover", e => { const t = e.target.closest("[data-tip]"); if (!t) return; tip.innerHTML = t.dataset.tip; tip.hidden = false; });
+document.addEventListener("pointerover", e => { const t = e.target.closest("[data-tip]"); if (!t) return; tip.textContent = t.dataset.tip.replace(/<br>/g, "\n"); tip.hidden = false; });
 document.addEventListener("pointermove", e => { if (tip.hidden) return; const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8); tip.style.left = x + "px"; tip.style.top = (e.clientY + 14) + "px"; });
 document.addEventListener("pointerout", e => { if (e.target.closest("[data-tip]")) tip.hidden = true; });
 
@@ -273,9 +276,9 @@ $("modes").innerHTML = `<tr><th>Mode</th><th class="r">Tried</th><th class="r">C
 $("fails").innerHTML = `<tr><th>Round</th><th>Agent</th><th>Outcome</th><th>Why</th></tr>` +
   C.filter(c => c.status !== "ok").map(c => `<tr><td class="r">${c.round}</td><td>${esc(c.mode)}</td><td><span class="pill bad">${esc(c.status.replace("_", " "))}</span></td><td class="mono" style="font-size:12px">${esc(c.error)}</td></tr>`).join("");
 const trace = D.repair;
-$("memorytrace").innerHTML = trace ? `<h3>Stored failure → retrieved evidence → repair → evaluation</h3><p>${esc(trace.lesson?.rule || "")}</p><p>Retrieval: ${esc(trace.retrieval_method)} · Original: ${esc(trace.original_status)} · Repair: ${esc(trace.repair_status)}</p><details><summary>Evidence and exact prompt</summary><pre>${esc(JSON.stringify({source_id:trace.source_id,retrieved_ids:trace.retrieved_ids,checks:trace.checks},null,2))}</pre><pre>${esc(trace.prompt)}</pre></details>` : '<p>Historical retrieval context was not recorded. Candidate storage and lineage are inspectable; memory benefit requires new evidence.</p>';
-$("study").innerHTML = D.study ? `<h3>Exploratory memory study</h3><pre>${esc(JSON.stringify(D.study,null,2))}</pre>` : '<p>No controlled memory study recorded.</p>';
-$("comparison").innerHTML = D.comparison ? `<h3>Contemporaneous comparison</h3><pre>${esc(JSON.stringify(D.comparison.summary,null,2))}</pre>` : '<p>Historical promotions are not independent noise-controlled comparisons.</p>';
+$("memorytrace").innerHTML = trace ? `<h3>Stored failure → retrieved evidence → repair → evaluation</h3><p>${esc(trace.lesson?.rule || "")}</p><p>Retrieval: ${esc(trace.retrieval_method)} · Original: ${esc(trace.original_status)} · Repair: ${esc(trace.repair_status)}</p><details><summary>Evidence and exact prompt</summary><pre>${esc(JSON.stringify({source_id:trace.source_id,retrieved_ids:trace.retrieved_ids,checks:trace.checks},null,2))}</pre><pre>${esc(trace.prompt)}</pre></details><details><summary>Original failure and verified repaired proposal</summary><pre>${esc(trace.original_code)}</pre><pre>${esc(trace.repaired_code)}</pre></details>` : '<p>Historical retrieval context was not recorded. Candidate storage and lineage are inspectable; memory benefit requires new evidence.</p>';
+$("study").innerHTML = D.study ? `<h3>Exploratory memory study</h3><p>${esc(D.study.interpretation)}</p><p>${D.study.proposals} proposals · Completed: ${D.study.complete} · winners frozen before fresh tests.</p><div class="table-wrap"><table><tr><th>Condition</th><th>Replicate</th><th>Passed</th><th>Fresh ×</th><th>Tokens recorded</th></tr>${D.study.conditions.map(r=>`<tr><td>${esc(r.condition)}</td><td>${r.replicate}</td><td>${r.passed}/${r.attempts}</td><td>${r.fresh_speedup===null ? "unavailable" : fx(r.fresh_speedup)}</td><td>${r.tokens.toLocaleString()}</td></tr>`).join("")}</table></div><p>${esc(D.study.token_note || "")}</p><details><summary>Protocol hashes and raw summary</summary><pre>${esc(JSON.stringify(D.study,null,2))}</pre></details>` : '<p>No controlled memory study recorded.</p>';
+$("comparison").innerHTML = D.comparison ? `<h3>Contemporaneous comparison</h3><p>Ten randomized blocks confirm the initial gain. Later promotions did not consistently clear the improvement margin.</p><table><tr><th>Kernel</th><th>Dev</th><th>Validation</th></tr>${Object.entries(D.comparison.summary).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${fx(v.dev.median_speedup)}</td><td>${fx(v.validation.median_speedup)}</td></tr>`).join('')}</table><details><summary>Raw summary and observed ranges</summary><pre>${esc(JSON.stringify(D.comparison.summary,null,2))}</pre></details>` : '<p>Historical promotions are not independent noise-controlled comparisons.</p>';
 $("basecode").textContent = D.baseline_code;
 $("champcode").textContent = D.champion_code;
 </script>

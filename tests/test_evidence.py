@@ -11,8 +11,9 @@ def test_comment_and_string_checks():
     assert harness.static_check('void matmul(){ system("true"); }').startswith('blocked')
     assert harness.static_check('#include "other.h"\nvoid matmul(){}').startswith('blocked')
 
-def test_missing_oracle_fails_before_compile():
-    with patch.object(harness,'reference_outputs',return_value={}), patch.object(harness,'compile_kernel') as compiler:
+@pytest.mark.parametrize('oracle',[{}, {'x::y':None}, {'x::y':''}])
+def test_missing_oracle_fails_before_compile(oracle):
+    with patch.object(harness,'reference_outputs',return_value=oracle), patch.object(harness,'compile_kernel') as compiler:
         result=harness.evaluate(harness.BASELINE_KERNEL,[harness.Item('x','y')],runs=1)
     assert result.status=='invalid_evaluation'
     compiler.assert_not_called()
@@ -74,3 +75,49 @@ def test_vector_query_and_fallback_are_run_scoped(tmp_path):
     mem.col=Fake()
     with patch.object(mem,'_vector_ready',return_value=True),patch('tokenforge.memory.embed',return_value=[1.0]):
         assert mem.retrieve('query','a')==[]
+
+def test_successful_atlas_write_is_also_mirrored(tmp_path):
+    mem=Memory(tmp_path/'mirror.jsonl',connect=False)
+    inserted=[]
+    class Fake:
+        def insert_one(self,doc): inserted.append(doc)
+    mem.col=Fake()
+    with patch('tokenforge.memory.embed',return_value=[1.0]):
+        identity=mem.add({'run_id':'a','status':'ok','note':'test'})
+    assert inserted[0]['_id']==identity
+    assert json.loads(mem.path.read_text())['_id']==identity
+    assert 'embedding' not in json.loads(mem.path.read_text())
+
+def test_study_expired_deadline_does_not_spawn():
+    import time
+    from learning_study import invoke
+    with patch('learning_study.subprocess.Popen') as spawn:
+        assert invoke({'task':'propose'},time.monotonic()-1)['status']=='timeout'
+    spawn.assert_not_called()
+
+def test_study_timeout_terminates_process_group():
+    import time,subprocess
+    from learning_study import invoke
+    class Process:
+        pid=987654
+        calls=0
+        def communicate(self,*args,**kwargs):
+            self.calls+=1
+            if self.calls==1: raise subprocess.TimeoutExpired('worker',1)
+            return '',''
+    with patch('learning_study.subprocess.Popen',return_value=Process()),patch('learning_study.os.killpg') as kill:
+        assert invoke({'task':'propose'},time.monotonic()+1)['status']=='timeout'
+    kill.assert_called_once()
+
+
+def test_bundle_refuses_changed_champion(tmp_path):
+    import shutil
+    root=Path(__file__).resolve().parent.parent
+    (tmp_path/'results').mkdir()
+    identity='r-20261011-170439'
+    shutil.copy(root/f'results/{identity}.candidates.jsonl',tmp_path/'results')
+    data=json.loads((root/f'results/{identity}.json').read_text())
+    data['champion_code']='void matmul(){}'
+    (tmp_path/f'results/{identity}.json').write_text(json.dumps(data))
+    with pytest.raises(ValueError,match='champion code'):
+        load_bundle(identity,tmp_path)

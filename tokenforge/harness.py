@@ -130,7 +130,7 @@ def evaluate(code: str, items: list[Item], runs: int = RUNS, omp: bool = False) 
         if reason:
             return Result("rejected", error_snippet=reason)
     ref = reference_outputs()
-    if not items or runs < 1 or any(key(it) not in ref for it in items):
+    if not items or runs < 1 or any(not isinstance(ref.get(key(it)), str) or not ref[key(it)] for it in items):
         return Result('invalid_evaluation', error_snippet='missing oracle, empty items, or invalid repeat count')
     with tempfile.TemporaryDirectory() as d:
         binary, err = compile_kernel(code, Path(d), omp=omp)

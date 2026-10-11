@@ -9,8 +9,10 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from datetime import datetime, timezone
 import hashlib
+from collections import Counter
 import json
 import os
+import signal
 from pathlib import Path
 import subprocess
 import sys
@@ -35,11 +37,15 @@ def worker(payload):
 def invoke(payload, deadline):
     remaining=deadline-time.monotonic()
     if remaining<=0: return {'status':'timeout','code':'','error':'study deadline reached','tps':[]}
+    process=subprocess.Popen([sys.executable,str(Path(__file__).resolve()),'--worker'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,start_new_session=True)
     try:
-        p=subprocess.run([sys.executable,str(Path(__file__).resolve()),'--worker'],input=json.dumps(payload),capture_output=True,text=True,timeout=min(60,remaining))
-        if p.returncode: return {'status':'crash','code':'','error':p.stderr[-300:],'tps':[]}
-        return json.loads(p.stdout)
+        stdout,stderr=process.communicate(json.dumps(payload),timeout=min(60,remaining))
+        if process.returncode: return {'status':'crash','code':'','error':stderr[-300:],'tps':[]}
+        return json.loads(stdout)
     except subprocess.TimeoutExpired:
+        # Also terminate a compiled child, so no timed-out evaluation keeps consuming cores.
+        os.killpg(process.pid,signal.SIGKILL)
+        process.communicate()
         return {'status':'timeout','code':'','error':'60-second proposal/evaluation or study deadline reached','tps':[]}
 
 
@@ -131,7 +137,7 @@ def study(args):
                 rounds.append({'round':round_idx,'n_total':len(scored),'n_ok':len(ok),'champion_id':champion_id})
                 save(out/f'{run_id}.json',{'condition':condition,'rounds':rounds,'candidates':rows,'champion_code':champion})
                 print(f'{run_id} round {round_idx}: {len(ok)}/{len(scored)} passed',flush=True)
-            states.append({'run_id':run_id,'condition':condition,'replicate':rep+1,'rounds_completed':len(rounds),'attempts':len(rows),'passed':sum(d['status']=='ok' for d in rows),'code_failures':sum(d['status'] in ('compile_error','wrong_output','rejected','crash') for d in rows),'no_code':sum(d['status']=='no_code' for d in rows),'tokens':sum(d['llm_tokens'] for d in rows),'best_dev_speedup':max([d['dev_speedup'] for d in rows]+[1]),'champion_code':champion,'champion_id':champion_id})
+            states.append({'run_id':run_id,'condition':condition,'replicate':rep+1,'rounds_completed':len(rounds),'attempts':len(rows),'passed':sum(d['status']=='ok' for d in rows),'code_failures':sum(d['status'] in ('compile_error','wrong_output','rejected','crash') for d in rows),'no_code':sum(d['status']=='no_code' for d in rows),'tokens':sum(d['llm_tokens'] for d in rows),'unknown_token_attempts':sum(d['provider']=='none' for d in rows),'repeated_failures':sum(max(0,n-1) for n in Counter((d['status'],d['error_snippet']) for d in rows if d['status'] not in ('ok','no_code')).values()),'best_dev_speedup':max([d['dev_speedup'] for d in rows]+[1]),'champion_code':champion,'champion_id':champion_id})
             save(out/'progress.json',states)
     # Optimization is over: freeze winners before using fresh-test outcomes.
     frozen=[{'run_id':s['run_id'],'kernel_sha256':hashlib.sha256(s['champion_code'].encode()).hexdigest()} for s in states]
@@ -143,7 +149,7 @@ def study(args):
         s['fresh_speedup']=harness.speedup(result,base_fresh) if result.status=='ok' and base_fresh.status=='ok' else None
         s['fresh_tps']=result.tps
     complete=proposals==args.replicates*args.rounds*args.agents*2 and all(s['rounds_completed']==args.rounds and s['fresh_status']=='ok' for s in states) and base_fresh.status=='ok'
-    save(out/'summary.json',{'protocol_sha256':hashlib.sha256(committed).hexdigest(),'fresh_sha256':digest,'complete':complete,'proposals':proposals,'baseline_fresh_status':base_fresh.status,'baseline_fresh_tps':base_fresh.tps,'conditions':states,'interpretation':protocol['interpretation'],'terminated_at_budget':time.monotonic()>=deadline})
+    save(out/'summary.json',{'protocol_sha256':hashlib.sha256(committed).hexdigest(),'fresh_sha256':digest,'complete':complete,'proposals':proposals,'baseline_fresh_status':base_fresh.status,'baseline_fresh_tps':base_fresh.tps,'conditions':states,'interpretation':protocol['interpretation'],'token_note':'Recorded usage only; timed-out/no-response calls may have unreported provider usage.','terminated_at_budget':time.monotonic()>=deadline})
     print(f'Study complete={complete}; {proposals} proposals; artifacts in {out}',flush=True)
 
 

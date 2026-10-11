@@ -1,0 +1,100 @@
+{
+  "protocol_sha256": "dde0c46484ae6cfc6103adc9cdbaaf76e59395185656f438430c76ae4b9559e2",
+  "fresh_sha256": "575e0963345aaf48c422ff5bad8322a4a9c2e12a8224115d4adb034e531caa65",
+  "complete": true,
+  "proposals": 24,
+  "baseline_fresh_status": "ok",
+  "baseline_fresh_tps": [
+    150.78125,
+    44.608832
+  ],
+  "conditions": [
+    {
+      "run_id": "r-study-20261011-221950-1-champion-only",
+      "condition": "champion-only",
+      "replicate": 1,
+      "rounds_completed": 2,
+      "attempts": 6,
+      "passed": 4,
+      "code_failures": 1,
+      "no_code": 1,
+      "tokens": 16871,
+      "best_dev_speedup": 6.239068805627543,
+      "champion_id": "1f33dec78f344cab8c18912dbc42e1e8",
+      "fresh_status": "ok",
+      "fresh_speedup": 6.712322471492072,
+      "fresh_tps": [
+        906.103286,
+        334.453782
+      ],
+      "unknown_token_attempts": 0,
+      "repeated_failures": 0
+    },
+    {
+      "run_id": "r-study-20261011-221950-1-history",
+      "condition": "history",
+      "replicate": 1,
+      "rounds_completed": 2,
+      "attempts": 6,
+      "passed": 5,
+      "code_failures": 1,
+      "no_code": 0,
+      "tokens": 24363,
+      "best_dev_speedup": 7.016737675699446,
+      "champion_id": "678cc0dfbf1b444688b5de7c296b0188",
+      "fresh_status": "ok",
+      "fresh_speedup": 7.44709389899581,
+      "fresh_tps": [
+        989.74359,
+        376.893939
+      ],
+      "unknown_token_attempts": 0,
+      "repeated_failures": 0
+    },
+    {
+      "run_id": "r-study-20261011-221950-2-history",
+      "condition": "history",
+      "replicate": 2,
+      "rounds_completed": 2,
+      "attempts": 6,
+      "passed": 5,
+      "code_failures": 0,
+      "no_code": 1,
+      "tokens": 17491,
+      "best_dev_speedup": 6.490049444042383,
+      "champion_id": "619c915432a143d9ae88946b8b01af46",
+      "fresh_status": "ok",
+      "fresh_speedup": 7.2442041917972535,
+      "fresh_tps": [
+        950.738916,
+        371.268657
+      ],
+      "unknown_token_attempts": 0,
+      "repeated_failures": 0
+    },
+    {
+      "run_id": "r-study-20261011-221950-2-champion-only",
+      "condition": "champion-only",
+      "replicate": 2,
+      "rounds_completed": 2,
+      "attempts": 6,
+      "passed": 5,
+      "code_failures": 1,
+      "no_code": 0,
+      "tokens": 19364,
+      "best_dev_speedup": 6.282745742862646,
+      "champion_id": "7f01cfccce484be99e80607904c1cbca",
+      "fresh_status": "ok",
+      "fresh_speedup": 6.464931934985467,
+      "fresh_tps": [
+        932.36715,
+        301.515152
+      ],
+      "unknown_token_attempts": 0,
+      "repeated_failures": 0
+    }
+  ],
+  "interpretation": "Exploratory matched-proposal comparison; token counts can differ. Two replicates do not establish a causal or statistically conclusive advantage.",
+  "terminated_at_budget": false,
+  "token_note": "Recorded usage only; timed-out/no-response calls may have unreported provider usage."
+}

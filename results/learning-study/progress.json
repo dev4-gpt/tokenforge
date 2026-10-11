@@ -1,0 +1,58 @@
+[
+  {
+    "run_id": "r-study-20261011-221950-1-champion-only",
+    "condition": "champion-only",
+    "replicate": 1,
+    "rounds_completed": 2,
+    "attempts": 6,
+    "passed": 4,
+    "code_failures": 1,
+    "no_code": 1,
+    "tokens": 16871,
+    "best_dev_speedup": 6.239068805627543,
+    "champion_code": "#include <arm_neon.h>\n#include <stdint.h>\n\nvoid matmul(float* xout, float* x, float* w, int n, int d) {\n    int i;\n    #pragma omp parallel for private(i) schedule(static)\n    for (i = 0; i < d; i++) {\n        const float* wp = w + (size_t)i * (size_t)n;\n        int j = 0;\n        float32x4_t acc0 = vdupq_n_f32(0.0f);\n        float32x4_t acc1 = vdupq_n_f32(0.0f);\n        float32x4_t acc2 = vdupq_n_f32(0.0f);\n        float32x4_t acc3 = vdupq_n_f32(0.0f);\n        for (; j + 16 <= n; j += 16) {\n            float32x4_t x0 = vld1q_f32(x + j);\n            float32x4_t x1 = vld1q_f32(x + j + 4);\n            float32x4_t x2 = vld1q_f32(x + j + 8);\n            float32x4_t x3 = vld1q_f32(x + j + 12);\n            acc0 = vfmaq_f32(acc0, vld1q_f32(wp + j), x0);\n            acc1 = vfmaq_f32(acc1, vld1q_f32(wp + j + 4), x1);\n            acc2 = vfmaq_f32(acc2, vld1q_f32(wp + j + 8), x2);\n            acc3 = vfmaq_f32(acc3, vld1q_f32(wp + j + 12), x3);\n        }\n        for (; j + 4 <= n; j += 4) {\n            acc0 = vfmaq_f32(acc0, vld1q_f32(wp + j), vld1q_f32(x + j));\n        }\n        acc0 = vaddq_f32(acc0, acc1);\n        acc2 = vaddq_f32(acc2, acc3);\n        acc0 = vaddq_f32(acc0, acc2);\n        float val = vaddvq_f32(acc0);\n        for (; j < n; j++) {\n            val += wp[j] * x[j];\n        }\n        xout[i] = val;\n    }\n}",
+    "champion_id": "1f33dec78f344cab8c18912dbc42e1e8"
+  },
+  {
+    "run_id": "r-study-20261011-221950-1-history",
+    "condition": "history",
+    "replicate": 1,
+    "rounds_completed": 2,
+    "attempts": 6,
+    "passed": 5,
+    "code_failures": 1,
+    "no_code": 0,
+    "tokens": 24363,
+    "best_dev_speedup": 7.016737675699446,
+    "champion_code": "#include <arm_neon.h>\n#include <dispatch/dispatch.h>\n#include <stdint.h>\n\n/* Dot product of one row of W with x, using 4 NEON FMA accumulators.\n   Handles non-multiple-of-16 tails scalar-wise. */\nstatic inline float dot_f32(const float* restrict wp, const float* restrict x, int n) {\n    float32x4_t a0 = vdupq_n_f32(0.0f);\n    float32x4_t a1 = vdupq_n_f32(0.0f);\n    float32x4_t a2 = vdupq_n_f32(0.0f);\n    float32x4_t a3 = vdupq_n_f32(0.0f);\n    int j = 0;\n    for (; j + 16 <= n; j += 16) {\n        a0 = vfmaq_f32(a0, vld1q_f32(wp + j),      vld1q_f32(x + j));\n        a1 = vfmaq_f32(a1, vld1q_f32(wp + j + 4),  vld1q_f32(x + j + 4));\n        a2 = vfmaq_f32(a2, vld1q_f32(wp + j + 8),  vld1q_f32(x + j + 8));\n        a3 = vfmaq_f32(a3, vld1q_f32(wp + j + 12), vld1q_f32(x + j + 12));\n    }\n    for (; j + 4 <= n; j += 4) {\n        a0 = vfmaq_f32(a0, vld1q_f32(wp + j), vld1q_f32(x + j));\n    }\n    float32x4_t s = vaddq_f32(vaddq_f32(a0, a1), vaddq_f32(a2, a3));\n    float acc = vaddvq_f32(s);\n    for (; j < n; j++) acc += wp[j] * x[j];\n    return acc;\n}\n\nvoid matmul(float* xout, float* x, float* w, int n, int d) {\n    /* W (d,n) @ x (n,) -> xout (d,) : row i = sum_j w[i*n+j] * x[j] */\n    if (d <= 0 || n <= 0) return;\n\n    /* Split rows into ~4 waves over 12 cores; rows are uniform cost so a\n       static chunked split is well balanced. */\n    int nb = 48;\n    if (d < nb) nb = d;\n    int chunk = (d + nb - 1) / nb;\n    nb = (d + chunk - 1) / chunk;\n\n    const float* restrict wbase = w;\n    const float* restrict xb    = x;\n    float* restrict             xo = xout;\n\n    dispatch_apply((size_t)nb,\n                   dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0),\n                   ^(size_t b) {\n        int r0 = (int)b * chunk;\n        int r1 = r0 + chunk;\n        if (r1 > d) r1 = d;\n        for (int i = r0; i < r1; i++) {\n            xo[i] = dot_f32(wbase + (size_t)i * (size_t)n, xb, n);\n        }\n    });\n}",
+    "champion_id": "678cc0dfbf1b444688b5de7c296b0188"
+  },
+  {
+    "run_id": "r-study-20261011-221950-2-history",
+    "condition": "history",
+    "replicate": 2,
+    "rounds_completed": 2,
+    "attempts": 6,
+    "passed": 5,
+    "code_failures": 0,
+    "no_code": 1,
+    "tokens": 17491,
+    "best_dev_speedup": 6.490049444042383,
+    "champion_code": "#include <arm_neon.h>\n#include <stdint.h>\n#include <dispatch/dispatch.h>\n\nvoid matmul(float* xout, float* x, float* w, int n, int d) {\n    // Chunk rows; each chunk processes multiple rows, reusing x.\n    const int CHUNK = 64;\n    int nchunks = (d + CHUNK - 1) / CHUNK;\n    if (nchunks < 1) nchunks = 1;\n\n    dispatch_apply(nchunks, DISPATCH_APPLY_AUTO, ^(size_t ci) {\n        int i0 = (int)ci * CHUNK;\n        int i1 = i0 + CHUNK;\n        if (i1 > d) i1 = d;\n        for (int i = i0; i < i1; i++) {\n            const float* wp = w + (size_t)i * n;\n            float32x4_t acc0 = vdupq_n_f32(0.0f);\n            float32x4_t acc1 = vdupq_n_f32(0.0f);\n            float32x4_t acc2 = vdupq_n_f32(0.0f);\n            float32x4_t acc3 = vdupq_n_f32(0.0f);\n            int j = 0;\n            for (; j + 16 <= n; j += 16) {\n                acc0 = vfmaq_f32(acc0, vld1q_f32(wp + j),      vld1q_f32(x + j));\n                acc1 = vfmaq_f32(acc1, vld1q_f32(wp + j + 4),  vld1q_f32(x + j + 4));\n                acc2 = vfmaq_f32(acc2, vld1q_f32(wp + j + 8),  vld1q_f32(x + j + 8));\n                acc3 = vfmaq_f32(acc3, vld1q_f32(wp + j + 12), vld1q_f32(x + j + 12));\n            }\n            for (; j + 4 <= n; j += 4) {\n                acc0 = vfmaq_f32(acc0, vld1q_f32(wp + j), vld1q_f32(x + j));\n            }\n            float sum = vaddvq_f32(vaddq_f32(vaddq_f32(acc0, acc1), vaddq_f32(acc2, acc3)));\n            for (; j < n; j++) {\n                sum += wp[j] * x[j];\n            }\n            xout[i] = sum;\n        }\n    });\n}",
+    "champion_id": "619c915432a143d9ae88946b8b01af46"
+  },
+  {
+    "run_id": "r-study-20261011-221950-2-champion-only",
+    "condition": "champion-only",
+    "replicate": 2,
+    "rounds_completed": 2,
+    "attempts": 6,
+    "passed": 5,
+    "code_failures": 1,
+    "no_code": 0,
+    "tokens": 19364,
+    "best_dev_speedup": 6.282745742862646,
+    "champion_code": "#include <arm_neon.h>\n#include <stdint.h>\n#include <dispatch/dispatch.h>\n\n// Compute a block of rows [i0, i1) using 4-row NEON kernel.\nstatic void matmul_rows(float* xout, const float* x, const float* w,\n                        int n, int i0, int i1) {\n    int i = i0;\n    for (; i + 4 <= i1; i += 4) {\n        const float* w0 = w + (size_t)(i + 0) * n;\n        const float* w1 = w + (size_t)(i + 1) * n;\n        const float* w2 = w + (size_t)(i + 2) * n;\n        const float* w3 = w + (size_t)(i + 3) * n;\n\n        float32x4_t a0 = vdupq_n_f32(0.f);\n        float32x4_t a1 = vdupq_n_f32(0.f);\n        float32x4_t a2 = vdupq_n_f32(0.f);\n        float32x4_t a3 = vdupq_n_f32(0.f);\n\n        int j = 0;\n        for (; j + 16 <= n; j += 16) {\n            float32x4_t x0 = vld1q_f32(x + j);\n            float32x4_t x1 = vld1q_f32(x + j + 4);\n            float32x4_t x2 = vld1q_f32(x + j + 8);\n            float32x4_t x3 = vld1q_f32(x + j + 12);\n            a0 = vfmaq_f32(a0, vld1q_f32(w0 + j),      x0);\n            a0 = vfmaq_f32(a0, vld1q_f32(w0 + j + 4),  x1);\n            a0 = vfmaq_f32(a0, vld1q_f32(w0 + j + 8),  x2);\n            a0 = vfmaq_f32(a0, vld1q_f32(w0 + j + 12), x3);\n            a1 = vfmaq_f32(a1, vld1q_f32(w1 + j),      x0);\n            a1 = vfmaq_f32(a1, vld1q_f32(w1 + j + 4),  x1);\n            a1 = vfmaq_f32(a1, vld1q_f32(w1 + j + 8),  x2);\n            a1 = vfmaq_f32(a1, vld1q_f32(w1 + j + 12), x3);\n            a2 = vfmaq_f32(a2, vld1q_f32(w2 + j),      x0);\n            a2 = vfmaq_f32(a2, vld1q_f32(w2 + j + 4),  x1);\n            a2 = vfmaq_f32(a2, vld1q_f32(w2 + j + 8),  x2);\n            a2 = vfmaq_f32(a2, vld1q_f32(w2 + j + 12), x3);\n            a3 = vfmaq_f32(a3, vld1q_f32(w3 + j),      x0);\n            a3 = vfmaq_f32(a3, vld1q_f32(w3 + j + 4),  x1);\n            a3 = vfmaq_f32(a3, vld1q_f32(w3 + j + 8),  x2);\n            a3 = vfmaq_f32(a3, vld1q_f32(w3 + j + 12), x3);\n        }\n        for (; j + 4 <= n; j += 4) {\n            float32x4_t x0 = vld1q_f32(x + j);\n            a0 = vfmaq_f32(a0, vld1q_f32(w0 + j), x0);\n            a1 = vfmaq_f32(a1, vld1q_f32(w1 + j), x0);\n            a2 = vfmaq_f32(a2, vld1q_f32(w2 + j), x0);\n            a3 = vfmaq_f32(a3, vld1q_f32(w3 + j), x0);\n        }\n        float s0 = vaddvq_f32(a0);\n        float s1 = vaddvq_f32(a1);\n        float s2 = vaddvq_f32(a2);\n        float s3 = vaddvq_f32(a3);\n        for (; j < n; j++) {\n            float xj = x[j];\n            s0 += w0[j] * xj;\n            s1 += w1[j] * xj;\n            s2 += w2[j] * xj;\n            s3 += w3[j] * xj;\n        }\n        xout[i + 0] = s0;\n        xout[i + 1] = s1;\n        xout[i + 2] = s2;\n        xout[i + 3] = s3;\n    }\n    for (; i < i1; i++) {\n        const float* wi = w + (size_t)i * n;\n        float32x4_t a = vdupq_n_f32(0.f);\n        float32x4_t b = vdupq_n_f32(0.f);\n        int j = 0;\n        for (; j + 8 <= n; j += 8) {\n            a = vfmaq_f32(a, vld1q_f32(wi + j),     vld1q_f32(x + j));\n            b = vfmaq_f32(b, vld1q_f32(wi + j + 4), vld1q_f32(x + j + 4));\n        }\n        for (; j + 4 <= n; j += 4) {\n            a = vfmaq_f32(a, vld1q_f32(wi + j), vld1q_f32(x + j));\n        }\n        float s = vaddvq_f32(vaddq_f32(a, b));\n        for (; j < n; j++) s += wi[j] * x[j];\n        xout[i] = s;\n    }\n}\n\n// Greedy-argmax threshold: multithreading only pays off for large d.\n#define MM_PARALLEL_MIN_D 512\n#define MM_GRAIN 64\n\nvoid matmul(float* xout, float* x, float* w, int n, int d) {\n    if (d < MM_PARALLEL_MIN_D) {\n        matmul_rows(xout, x, w, n, 0, d);\n        return;\n    }\n\n    // Partition rows into 4-row-aligned chunks for dispatch_apply.\n    int nchunks = (d + MM_GRAIN - 1) / MM_GRAIN;\n    int chunk = ((d + nchunks - 1) / nchunks + 3) & ~3;\n    int total = (d + chunk - 1) / chunk;\n\n    dispatch_apply(total, DISPATCH_APPLY_AUTO, ^(size_t k) {\n        int i0 = (int)k * chunk;\n        int i1 = i0 + chunk;\n        if (i1 > d) i1 = d;\n        matmul_rows(xout, x, w, n, i0, i1);\n    });\n}",
+    "champion_id": "7f01cfccce484be99e80607904c1cbca"
+  }
+]

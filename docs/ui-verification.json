@@ -1,0 +1,99 @@
+{
+  "method": "Codex browser DOM inspection and screenshots",
+  "checks": [
+    {
+      "page": "Streamlit dashboard",
+      "appearance": "Light",
+      "width": 1280,
+      "document_width": 1280,
+      "horizontal_page_overflow": false
+    },
+    {
+      "page": "Streamlit dashboard",
+      "appearance": "Light",
+      "width": 768,
+      "document_width": 768,
+      "horizontal_page_overflow": false
+    },
+    {
+      "page": "Streamlit dashboard",
+      "appearance": "Light",
+      "width": 390,
+      "document_width": 390,
+      "horizontal_page_overflow": false
+    },
+    {
+      "page": "Streamlit dashboard",
+      "appearance": "Dark",
+      "width": 1280,
+      "document_width": 1280,
+      "horizontal_page_overflow": false
+    },
+    {
+      "page": "Streamlit dashboard",
+      "appearance": "Dark",
+      "width": 768,
+      "document_width": 768,
+      "horizontal_page_overflow": false
+    },
+    {
+      "page": "Streamlit dashboard",
+      "appearance": "Dark",
+      "width": 390,
+      "document_width": 390,
+      "horizontal_page_overflow": false
+    },
+    {
+      "page": "Standalone report",
+      "appearance": "Light",
+      "width": 1280,
+      "document_width": 1280,
+      "horizontal_page_overflow": false
+    },
+    {
+      "page": "Standalone report",
+      "appearance": "Light",
+      "width": 768,
+      "document_width": 768,
+      "horizontal_page_overflow": false
+    },
+    {
+      "page": "Standalone report",
+      "appearance": "Light",
+      "width": 390,
+      "document_width": 390,
+      "horizontal_page_overflow": false
+    },
+    {
+      "page": "Standalone report",
+      "appearance": "Dark",
+      "width": 1280,
+      "document_width": 1280,
+      "horizontal_page_overflow": false
+    },
+    {
+      "page": "Standalone report",
+      "appearance": "Dark",
+      "width": 768,
+      "document_width": 768,
+      "horizontal_page_overflow": false
+    },
+    {
+      "page": "Standalone report",
+      "appearance": "Dark",
+      "width": 390,
+      "document_width": 390,
+      "horizontal_page_overflow": false
+    }
+  ],
+  "notes": [
+    "Phone code-column overflow fixed with zero-minimum grid tracks.",
+    "Dashboard charts settle after resize; internal data tables retain their own scroll area.",
+    "Both appearances were selected through visible controls."
+  ],
+  "additional_checks": [
+    "Historical run switch displays Not evaluated, without carrying the submitted held-out score.",
+    "Memory tab displays actual Atlas vector retrieval and compile_error \u2192 ok repair.",
+    "Completed study has 24 proposals, four frozen winners and successful fresh generated-text checks."
+  ]
+}

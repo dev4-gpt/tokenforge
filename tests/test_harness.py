@@ -47,12 +47,14 @@ def test_wrong_kernel_is_caught():
 
 @needs_clang
 def test_compile_error_reported():
+    harness.build_reference(DEV)
     r = harness.evaluate("void matmul(float* xout) { this is not C }", DEV, runs=1)
     assert r.status == "compile_error" and r.error_snippet
 
 
 @needs_clang
 def test_infinite_loop_times_out(monkeypatch):
+    harness.build_reference(DEV)
     real = harness.run_once
     monkeypatch.setattr(harness, "run_once", lambda b, it, timeout=30.0: real(b, it, timeout=3.0))
     assert harness.evaluate(LOOP, DEV, runs=1).status == "timeout"

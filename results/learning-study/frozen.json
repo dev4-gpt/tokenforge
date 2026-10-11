@@ -1,0 +1,18 @@
+[
+  {
+    "run_id": "r-study-20261011-221950-1-champion-only",
+    "kernel_sha256": "453bbf6f826c984a40bbc61060bf5e85dfcced99cf310e777d65c4f1a4217584"
+  },
+  {
+    "run_id": "r-study-20261011-221950-1-history",
+    "kernel_sha256": "533b283491f88552fd6fdab6eb7516a98171f0c4b3ab3c01ee9342c495131b68"
+  },
+  {
+    "run_id": "r-study-20261011-221950-2-history",
+    "kernel_sha256": "f4f26d6b7264f55afe2809d28a126430625b826e8008d9c424ec0b44bf0358c3"
+  },
+  {
+    "run_id": "r-study-20261011-221950-2-champion-only",
+    "kernel_sha256": "c22285c5e762781a33ef130f6b86e996b03c8680de0bbc7c8e8f930953e8fcae"
+  }
+]

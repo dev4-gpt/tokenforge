@@ -1,0 +1,1175 @@
+{
+  "run_id": "r-20261011-170439",
+  "blocks": 10,
+  "order_seed": 42,
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "compiler": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+  "flags": [
+    "-O3"
+  ],
+  "steps": 200,
+  "model_sha256": {
+    "stories15M.bin": "cd590644d963867a2b6e5a1107f51fad663c41d79c149fbecbbb1f95fa81f49a",
+    "stories42M.bin": "9f65a1000e17d0bc167dd6332e0ce5119a0222a3d920cead5bce413bfab2ee7b"
+  },
+  "kernel_sha256": {
+    "baseline": "9195810c7ef1ad1665e6b9b5bcea1f97bec7b769b9ab5e69ccdf1c08b9b67ab0",
+    "openmp": "9195810c7ef1ad1665e6b9b5bcea1f97bec7b769b9ab5e69ccdf1c08b9b67ab0",
+    "round-1": "73d8be7013f8b51ab1d990e93e689d291660bee84a6628aef91a219ce7d1e587",
+    "round-4": "8c4d47c1ac013bf0ce514e0bce53492f165f35e04191fdad331a247337888466",
+    "round-5": "3344b4f14aec4cf8c07acc6d04d17d8f436d38548abb02dd562d556ad527f231"
+  },
+  "correctness": "generated text matched baseline on all measured items",
+  "summary": {
+    "baseline": {
+      "dev": {
+        "median_speedup": 1.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "validation": {
+        "median_speedup": 1.0,
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    "openmp": {
+      "dev": {
+        "median_speedup": 2.49278030843399,
+        "min": 2.144498461436615,
+        "max": 2.8409509115663223
+      },
+      "validation": {
+        "median_speedup": 3.5788367522051665,
+        "min": 3.2105263292769113,
+        "max": 3.78243018924954
+      }
+    },
+    "round-1": {
+      "dev": {
+        "median_speedup": 5.9897673935866464,
+        "min": 4.83860039140395,
+        "max": 6.4891700388367015
+      },
+      "validation": {
+        "median_speedup": 7.685977939621903,
+        "min": 6.1959730897873,
+        "max": 8.461946975538169
+      },
+      "vs_previous": {
+        "kernel": "baseline",
+        "dev_median": 5.9897673935866464,
+        "dev_min": 4.83860039140395,
+        "dev_max": 6.4891700388367015,
+        "validation_median": 7.685977939621903,
+        "validation_min": 6.1959730897873,
+        "validation_max": 8.461946975538169,
+        "clears_margin_in_every_block": true
+      }
+    },
+    "round-4": {
+      "dev": {
+        "median_speedup": 6.29486718743137,
+        "min": 4.340126119742347,
+        "max": 7.484316868178291
+      },
+      "validation": {
+        "median_speedup": 7.947274799681418,
+        "min": 6.860028814973293,
+        "max": 8.595149227211635
+      },
+      "vs_previous": {
+        "kernel": "round-1",
+        "dev_median": 1.0651857327868424,
+        "dev_min": 0.8969796570621597,
+        "dev_max": 1.1671750927505145,
+        "validation_median": 0.9905206501769601,
+        "validation_min": 0.8672438658580203,
+        "validation_max": 1.3847583647158654,
+        "clears_margin_in_every_block": false
+      }
+    },
+    "round-5": {
+      "dev": {
+        "median_speedup": 6.31810737981358,
+        "min": 5.550556564343698,
+        "max": 6.787514942283881
+      },
+      "validation": {
+        "median_speedup": 8.114812870930463,
+        "min": 6.913432900230466,
+        "max": 8.49999997684925
+      },
+      "vs_previous": {
+        "kernel": "round-4",
+        "dev_median": 1.0008124714671152,
+        "dev_min": 0.8620067026197594,
+        "dev_max": 1.2788929195157142,
+        "validation_median": 0.982580394091003,
+        "validation_min": 0.8815165875847008,
+        "validation_max": 1.190721651441149,
+        "clears_margin_in_every_block": false
+      }
+    }
+  },
+  "samples": [
+    {
+      "block": 0,
+      "position": 0,
+      "kernel": "round-4",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 854.077253
+    },
+    {
+      "block": 0,
+      "position": 1,
+      "kernel": "openmp",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 308.049536
+    },
+    {
+      "block": 0,
+      "position": 2,
+      "kernel": "round-1",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 681.506849
+    },
+    {
+      "block": 0,
+      "position": 3,
+      "kernel": "round-5",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 846.808511
+    },
+    {
+      "block": 0,
+      "position": 4,
+      "kernel": "baseline",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 143.165468
+    },
+    {
+      "block": 0,
+      "position": 0,
+      "kernel": "round-4",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 441.527446
+    },
+    {
+      "block": 0,
+      "position": 1,
+      "kernel": "round-1",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 687.732342
+    },
+    {
+      "block": 0,
+      "position": 2,
+      "kernel": "baseline",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 139.833711
+    },
+    {
+      "block": 0,
+      "position": 3,
+      "kernel": "round-5",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 728.346457
+    },
+    {
+      "block": 0,
+      "position": 4,
+      "kernel": "openmp",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 298.869144
+    },
+    {
+      "block": 0,
+      "position": 0,
+      "kernel": "round-4",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 287.157287
+    },
+    {
+      "block": 0,
+      "position": 1,
+      "kernel": "openmp",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 146.431199
+    },
+    {
+      "block": 0,
+      "position": 2,
+      "kernel": "round-1",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 331.114809
+    },
+    {
+      "block": 0,
+      "position": 3,
+      "kernel": "baseline",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 41.859487
+    },
+    {
+      "block": 0,
+      "position": 4,
+      "kernel": "round-5",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 341.924399
+    },
+    {
+      "block": 1,
+      "position": 0,
+      "kernel": "openmp",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 354.092527
+    },
+    {
+      "block": 1,
+      "position": 1,
+      "kernel": "round-1",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 843.220339
+    },
+    {
+      "block": 1,
+      "position": 2,
+      "kernel": "round-4",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 975.490196
+    },
+    {
+      "block": 1,
+      "position": 3,
+      "kernel": "round-5",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 1000.0
+    },
+    {
+      "block": 1,
+      "position": 4,
+      "kernel": "baseline",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 138.194444
+    },
+    {
+      "block": 1,
+      "position": 0,
+      "kernel": "round-5",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 790.598291
+    },
+    {
+      "block": 1,
+      "position": 1,
+      "kernel": "round-4",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 872.641509
+    },
+    {
+      "block": 1,
+      "position": 2,
+      "kernel": "round-1",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 889.423077
+    },
+    {
+      "block": 1,
+      "position": 3,
+      "kernel": "baseline",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 145.784082
+    },
+    {
+      "block": 1,
+      "position": 4,
+      "kernel": "openmp",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 354.40613
+    },
+    {
+      "block": 1,
+      "position": 0,
+      "kernel": "round-1",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 340.753425
+    },
+    {
+      "block": 1,
+      "position": 1,
+      "kernel": "openmp",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 137.811634
+    },
+    {
+      "block": 1,
+      "position": 2,
+      "kernel": "baseline",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 42.924935
+    },
+    {
+      "block": 1,
+      "position": 3,
+      "kernel": "round-4",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 311.912226
+    },
+    {
+      "block": 1,
+      "position": 4,
+      "kernel": "round-5",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 349.122807
+    },
+    {
+      "block": 2,
+      "position": 0,
+      "kernel": "openmp",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 364.468864
+    },
+    {
+      "block": 2,
+      "position": 1,
+      "kernel": "round-4",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 966.019417
+    },
+    {
+      "block": 2,
+      "position": 2,
+      "kernel": "baseline",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 148.175726
+    },
+    {
+      "block": 2,
+      "position": 3,
+      "kernel": "round-1",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 792.828685
+    },
+    {
+      "block": 2,
+      "position": 4,
+      "kernel": "round-5",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 672.297297
+    },
+    {
+      "block": 2,
+      "position": 0,
+      "kernel": "round-5",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 939.086294
+    },
+    {
+      "block": 2,
+      "position": 1,
+      "kernel": "baseline",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 135.431918
+    },
+    {
+      "block": 2,
+      "position": 2,
+      "kernel": "openmp",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 353.728489
+    },
+    {
+      "block": 2,
+      "position": 3,
+      "kernel": "round-1",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 915.841584
+    },
+    {
+      "block": 2,
+      "position": 4,
+      "kernel": "round-4",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 680.147059
+    },
+    {
+      "block": 2,
+      "position": 0,
+      "kernel": "round-5",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 318.910256
+    },
+    {
+      "block": 2,
+      "position": 1,
+      "kernel": "round-4",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 311.912226
+    },
+    {
+      "block": 2,
+      "position": 2,
+      "kernel": "baseline",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 41.536214
+    },
+    {
+      "block": 2,
+      "position": 3,
+      "kernel": "round-1",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 312.401884
+    },
+    {
+      "block": 2,
+      "position": 4,
+      "kernel": "openmp",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 147.516679
+    },
+    {
+      "block": 3,
+      "position": 0,
+      "kernel": "round-5",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 690.972222
+    },
+    {
+      "block": 3,
+      "position": 1,
+      "kernel": "round-1",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 742.537313
+    },
+    {
+      "block": 3,
+      "position": 2,
+      "kernel": "openmp",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 333.333333
+    },
+    {
+      "block": 3,
+      "position": 3,
+      "kernel": "baseline",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 144.307469
+    },
+    {
+      "block": 3,
+      "position": 4,
+      "kernel": "round-4",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 929.906542
+    },
+    {
+      "block": 3,
+      "position": 0,
+      "kernel": "round-4",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 902.439024
+    },
+    {
+      "block": 3,
+      "position": 1,
+      "kernel": "openmp",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 362.745098
+    },
+    {
+      "block": 3,
+      "position": 2,
+      "kernel": "baseline",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 103.815937
+    },
+    {
+      "block": 3,
+      "position": 3,
+      "kernel": "round-1",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 829.596413
+    },
+    {
+      "block": 3,
+      "position": 4,
+      "kernel": "round-5",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 902.439024
+    },
+    {
+      "block": 3,
+      "position": 0,
+      "kernel": "round-1",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 267.114094
+    },
+    {
+      "block": 3,
+      "position": 1,
+      "kernel": "round-4",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 369.888476
+    },
+    {
+      "block": 3,
+      "position": 2,
+      "kernel": "openmp",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 149.511645
+    },
+    {
+      "block": 3,
+      "position": 3,
+      "kernel": "baseline",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 43.110919
+    },
+    {
+      "block": 3,
+      "position": 4,
+      "kernel": "round-5",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 349.73638
+    },
+    {
+      "block": 4,
+      "position": 0,
+      "kernel": "baseline",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 153.430995
+    },
+    {
+      "block": 4,
+      "position": 1,
+      "kernel": "openmp",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 374.764595
+    },
+    {
+      "block": 4,
+      "position": 2,
+      "kernel": "round-4",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 966.019417
+    },
+    {
+      "block": 4,
+      "position": 3,
+      "kernel": "round-1",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 789.68254
+    },
+    {
+      "block": 4,
+      "position": 4,
+      "kernel": "round-5",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 917.050691
+    },
+    {
+      "block": 4,
+      "position": 0,
+      "kernel": "round-4",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 925.0
+    },
+    {
+      "block": 4,
+      "position": 1,
+      "kernel": "baseline",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 151.639344
+    },
+    {
+      "block": 4,
+      "position": 2,
+      "kernel": "round-1",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 925.0
+    },
+    {
+      "block": 4,
+      "position": 3,
+      "kernel": "openmp",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 372.2334
+    },
+    {
+      "block": 4,
+      "position": 4,
+      "kernel": "round-5",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 1016.483516
+    },
+    {
+      "block": 4,
+      "position": 0,
+      "kernel": "round-1",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 352.212389
+    },
+    {
+      "block": 4,
+      "position": 1,
+      "kernel": "round-5",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 337.860781
+    },
+    {
+      "block": 4,
+      "position": 2,
+      "kernel": "round-4",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 346.086957
+    },
+    {
+      "block": 4,
+      "position": 3,
+      "kernel": "openmp",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 156.446541
+    },
+    {
+      "block": 4,
+      "position": 4,
+      "kernel": "baseline",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 41.623091
+    },
+    {
+      "block": 5,
+      "position": 0,
+      "kernel": "round-4",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 917.050691
+    },
+    {
+      "block": 5,
+      "position": 1,
+      "kernel": "round-1",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 929.906542
+    },
+    {
+      "block": 5,
+      "position": 2,
+      "kernel": "round-5",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 947.619048
+    },
+    {
+      "block": 5,
+      "position": 3,
+      "kernel": "baseline",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 138.482951
+    },
+    {
+      "block": 5,
+      "position": 4,
+      "kernel": "openmp",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 348.511384
+    },
+    {
+      "block": 5,
+      "position": 0,
+      "kernel": "round-5",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 989.304813
+    },
+    {
+      "block": 5,
+      "position": 1,
+      "kernel": "openmp",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 370.741483
+    },
+    {
+      "block": 5,
+      "position": 2,
+      "kernel": "baseline",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 146.942017
+    },
+    {
+      "block": 5,
+      "position": 3,
+      "kernel": "round-1",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 852.534562
+    },
+    {
+      "block": 5,
+      "position": 4,
+      "kernel": "round-4",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 807.860262
+    },
+    {
+      "block": 5,
+      "position": 0,
+      "kernel": "baseline",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 42.962003
+    },
+    {
+      "block": 5,
+      "position": 1,
+      "kernel": "round-4",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 328.92562
+    },
+    {
+      "block": 5,
+      "position": 2,
+      "kernel": "round-5",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 297.014925
+    },
+    {
+      "block": 5,
+      "position": 3,
+      "kernel": "openmp",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 149.849398
+    },
+    {
+      "block": 5,
+      "position": 4,
+      "kernel": "round-1",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 337.860781
+    },
+    {
+      "block": 6,
+      "position": 0,
+      "kernel": "round-4",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 846.808511
+    },
+    {
+      "block": 6,
+      "position": 1,
+      "kernel": "round-5",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 880.530973
+    },
+    {
+      "block": 6,
+      "position": 2,
+      "kernel": "round-1",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 861.471861
+    },
+    {
+      "block": 6,
+      "position": 3,
+      "kernel": "openmp",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 349.122807
+    },
+    {
+      "block": 6,
+      "position": 4,
+      "kernel": "baseline",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 148.28614
+    },
+    {
+      "block": 6,
+      "position": 0,
+      "kernel": "baseline",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 151.763741
+    },
+    {
+      "block": 6,
+      "position": 1,
+      "kernel": "round-1",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 770.833333
+    },
+    {
+      "block": 6,
+      "position": 2,
+      "kernel": "round-5",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 1016.483516
+    },
+    {
+      "block": 6,
+      "position": 3,
+      "kernel": "round-4",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 889.423077
+    },
+    {
+      "block": 6,
+      "position": 4,
+      "kernel": "openmp",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 350.378788
+    },
+    {
+      "block": 6,
+      "position": 0,
+      "kernel": "baseline",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 43.289102
+    },
+    {
+      "block": 6,
+      "position": 1,
+      "kernel": "round-4",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 356.630824
+    },
+    {
+      "block": 6,
+      "position": 2,
+      "kernel": "round-1",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 320.967742
+    },
+    {
+      "block": 6,
+      "position": 3,
+      "kernel": "openmp",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 161.003236
+    },
+    {
+      "block": 6,
+      "position": 4,
+      "kernel": "round-5",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 314.375987
+    },
+    {
+      "block": 7,
+      "position": 0,
+      "kernel": "round-1",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 880.530973
+    },
+    {
+      "block": 7,
+      "position": 1,
+      "kernel": "round-4",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 888.392857
+    },
+    {
+      "block": 7,
+      "position": 2,
+      "kernel": "round-5",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 829.166667
+    },
+    {
+      "block": 7,
+      "position": 3,
+      "kernel": "openmp",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 326.229508
+    },
+    {
+      "block": 7,
+      "position": 4,
+      "kernel": "baseline",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 131.266491
+    },
+    {
+      "block": 7,
+      "position": 0,
+      "kernel": "openmp",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 351.711027
+    },
+    {
+      "block": 7,
+      "position": 1,
+      "kernel": "round-5",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 920.39801
+    },
+    {
+      "block": 7,
+      "position": 2,
+      "kernel": "baseline",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 141.006098
+    },
+    {
+      "block": 7,
+      "position": 3,
+      "kernel": "round-1",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 885.167464
+    },
+    {
+      "block": 7,
+      "position": 4,
+      "kernel": "round-4",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 902.439024
+    },
+    {
+      "block": 7,
+      "position": 0,
+      "kernel": "round-4",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 325.163399
+    },
+    {
+      "block": 7,
+      "position": 1,
+      "kernel": "openmp",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 161.92026
+    },
+    {
+      "block": 7,
+      "position": 2,
+      "kernel": "baseline",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 43.027027
+    },
+    {
+      "block": 7,
+      "position": 3,
+      "kernel": "round-1",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 335.016835
+    },
+    {
+      "block": 7,
+      "position": 4,
+      "kernel": "round-5",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 355.992844
+    },
+    {
+      "block": 8,
+      "position": 0,
+      "kernel": "round-1",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 912.844037
+    },
+    {
+      "block": 8,
+      "position": 1,
+      "kernel": "openmp",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 306.625578
+    },
+    {
+      "block": 8,
+      "position": 2,
+      "kernel": "baseline",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 153.076923
+    },
+    {
+      "block": 8,
+      "position": 3,
+      "kernel": "round-5",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 1000.0
+    },
+    {
+      "block": 8,
+      "position": 4,
+      "kernel": "round-4",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 970.731707
+    },
+    {
+      "block": 8,
+      "position": 0,
+      "kernel": "baseline",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 153.526971
+    },
+    {
+      "block": 8,
+      "position": 1,
+      "kernel": "round-4",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 989.304813
+    },
+    {
+      "block": 8,
+      "position": 2,
+      "kernel": "round-1",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 915.841584
+    },
+    {
+      "block": 8,
+      "position": 3,
+      "kernel": "round-5",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 1010.928962
+    },
+    {
+      "block": 8,
+      "position": 4,
+      "kernel": "openmp",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 367.063492
+    },
+    {
+      "block": 8,
+      "position": 0,
+      "kernel": "baseline",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 43.195138
+    },
+    {
+      "block": 8,
+      "position": 1,
+      "kernel": "openmp",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 163.382594
+    },
+    {
+      "block": 8,
+      "position": 2,
+      "kernel": "round-1",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 320.450886
+    },
+    {
+      "block": 8,
+      "position": 3,
+      "kernel": "round-4",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 371.268657
+    },
+    {
+      "block": 8,
+      "position": 4,
+      "kernel": "round-5",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 367.158672
+    },
+    {
+      "block": 9,
+      "position": 0,
+      "kernel": "round-5",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 1005.050505
+    },
+    {
+      "block": 9,
+      "position": 1,
+      "kernel": "round-4",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 921.296296
+    },
+    {
+      "block": 9,
+      "position": 2,
+      "kernel": "baseline",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 150.415722
+    },
+    {
+      "block": 9,
+      "position": 3,
+      "kernel": "openmp",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 369.202226
+    },
+    {
+      "block": 9,
+      "position": 4,
+      "kernel": "round-1",
+      "item": "stories15M.bin::Once upon a time",
+      "tps": 815.57377
+    },
+    {
+      "block": 9,
+      "position": 0,
+      "kernel": "openmp",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 357.833656
+    },
+    {
+      "block": 9,
+      "position": 1,
+      "kernel": "round-1",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 906.862745
+    },
+    {
+      "block": 9,
+      "position": 2,
+      "kernel": "round-4",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 939.086294
+    },
+    {
+      "block": 9,
+      "position": 3,
+      "kernel": "round-5",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 755.102041
+    },
+    {
+      "block": 9,
+      "position": 4,
+      "kernel": "baseline",
+      "item": "stories15M.bin::The little dog found a",
+      "tps": 140.577508
+    },
+    {
+      "block": 9,
+      "position": 0,
+      "kernel": "round-5",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 335.016835
+    },
+    {
+      "block": 9,
+      "position": 1,
+      "kernel": "baseline",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 42.448805
+    },
+    {
+      "block": 9,
+      "position": 2,
+      "kernel": "round-1",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 322.006472
+    },
+    {
+      "block": 9,
+      "position": 3,
+      "kernel": "round-4",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 363.802559
+    },
+    {
+      "block": 9,
+      "position": 4,
+      "kernel": "openmp",
+      "item": "stories42M.bin::Lily wanted to go to the park",
+      "tps": 153.076923
+    }
+  ],
+  "interpretation": "Ranges describe observed blocks, not confidence intervals. Later promotions require contemporaneous evidence.",
+  "openmp_extra_flags": [
+    "-Xpreprocessor",
+    "-fopenmp",
+    "-I/opt/homebrew/opt/libomp/include",
+    "-L/opt/homebrew/opt/libomp/lib",
+    "-lomp"
+  ]
+}

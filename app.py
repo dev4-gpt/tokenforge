@@ -11,7 +11,7 @@ ROOT = Path(__file__).parent
 st.set_page_config(page_title='TokenForge', layout='wide', initial_sidebar_state='collapsed')
 runs = sorted((ROOT / 'results').glob('r-*.json'), reverse=True)
 run_file = st.sidebar.selectbox('Run', [p.name for p in runs])
-appearance = st.sidebar.selectbox('Appearance', ['System', 'Light', 'Dark'])
+appearance = st.sidebar.selectbox('Appearance', ['Light', 'Dark'])
 if st.sidebar.button('Refresh export from Atlas'):
     from dotenv import load_dotenv
     load_dotenv(ROOT / '.env')
@@ -32,6 +32,9 @@ bg, surface, ink, muted, line = colors
 st.markdown(f'''<style>
 [data-testid="stAppViewContainer"] {{background:{bg};color:{ink};}}
 [data-testid="stHeader"] {{background:transparent;}}
+[data-testid="stSidebar"] {{background:{surface};}}
+.stButton button, [data-baseweb="select"] > div {{background:{surface};color:{ink};border-color:{line};}}
+[data-baseweb="tab-highlight"] {{background:#2a78d6;}}
 .block-container {{max-width:1120px;padding-top:2rem;padding-bottom:3rem;}}
 h1,h2,h3,p,label {{color:{ink};}} h1 {{font-size:2.8rem!important;letter-spacing:-.04em;}}
 .hero {{background:{surface};border:1px solid {line};border-radius:12px;padding:24px;margin:16px 0 24px;}}
@@ -81,10 +84,14 @@ with results:
     st.caption('Round 0 is the starting baseline. Each point is a measurement; fluctuations alone are not new improvements.')
     lineage = candidates[candidates['promoted']==True] if len(candidates) else candidates
     if len(lineage):
-        st.dataframe(lineage[['round','agent','mode','speedup','val','note']].rename(columns={'val':'validation_at_promotion'}),hide_index=True,use_container_width=True)
+        st.dataframe(lineage[['round','agent','mode','speedup','val','note']].rename(columns={'val':'validation_at_promotion'}),hide_index=True,use_container_width=True,column_config={'speedup':st.column_config.NumberColumn('Dev',format='%.2f×'),'validation_at_promotion':st.column_config.NumberColumn('Validation at promotion',format='%.2f×')})
     if data['comparison']:
         st.subheader('Contemporaneous comparison')
-        st.json(data['comparison']['summary'])
+        summary = data['comparison']['summary']
+        st.dataframe(pd.DataFrame([{'Kernel':name,'Dev ×':r['dev']['median_speedup'],'Validation ×':r['validation']['median_speedup'],'Later gain distinguished':r.get('vs_previous',{}).get('clears_margin_in_every_block',False)} for name,r in summary.items()]),hide_index=True,use_container_width=True,column_config={'Dev ×':st.column_config.NumberColumn(format='%.2f'),'Validation ×':st.column_config.NumberColumn(format='%.2f')})
+        st.caption('Ten randomized blocks confirm the large initial gain. Later promotions did not consistently clear the promotion margin; observed ranges are not confidence intervals.')
+        with st.expander('Raw comparison summary'):
+            st.json(summary)
 
 with experiments:
     st.subheader('Every experiment')
@@ -99,14 +106,24 @@ with experiments:
     st.dataframe(candidates[['round','agent','mode','status','speedup','error']] if len(candidates) else candidates,hide_index=True,use_container_width=True)
     if data['study']:
         st.subheader('Exploratory memory study')
-        st.json(data['study'])
+        study=data['study']
+        st.write(study['interpretation'])
+        st.dataframe(pd.DataFrame([{'Condition':r['condition'],'Replicate':r['replicate'],'Passed':f"{r['passed']}/{r['attempts']}",'Fresh ×':r['fresh_speedup'],'Code failures':r['code_failures'],'Repeated failures':r.get('repeated_failures',0),'Tokens recorded':r['tokens']} for r in study['conditions']]),hide_index=True,use_container_width=True,column_config={'Fresh ×':st.column_config.NumberColumn(format='%.2f')})
+        st.caption(study.get('token_note','Recorded token usage may be incomplete for timed-out calls.'))
+        with st.expander('Study protocol and raw summary'):
+            st.json(study)
+        st.caption(f"Completed: {study['complete']} · {study['proposals']} proposals · fresh cases evaluated only after freezing winners")
 
 with memory:
     st.subheader('Verified feedback and shared history')
     trace=data['repair']
     if trace:
         st.write('Stored failure → retrieved evidence → new repair → independent evaluation')
-        st.json({k:v for k,v in trace.items() if k not in ('original_code','repaired_code','prompt','memory_context')})
+        st.success(f"Atlas {trace['retrieval_method']} retrieval · {trace['original_status']} → {trace['repair_status']}")
+        st.text(trace['lesson']['rule'])
+        st.caption('Verified on development and validation prompts; this trace demonstrates feedback use, not a causal memory advantage.')
+        with st.expander('Source IDs and evaluation results'):
+            st.json({k:v for k,v in trace.items() if k not in ('original_code','repaired_code','prompt','memory_context')})
         with st.expander('Retrieved evidence and exact prompt'):
             st.json(trace.get('memory_context',[]))
             st.code(trace.get('prompt',''),language='text')

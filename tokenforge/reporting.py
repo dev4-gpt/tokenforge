@@ -53,6 +53,16 @@ def load_bundle(run_id: str | None = None, root: Path = ROOT) -> dict:
         items = [row for row in rows if row["round"] == rec["round"]]
         if len(items) != rec["n_total"] or sum(row["status"] == "ok" for row in items) != rec["n_ok"]:
             raise ValueError(f"Candidate counts disagree in round {rec['round']}; export this run first")
+    if len(rows) != sum(rec['n_total'] for rec in run['rounds']):
+        raise ValueError('Candidate counts disagree with total recorded attempts')
+    promoted_ids = [rec['promoted_id'] for rec in run['rounds'] if rec.get('promoted_id')]
+    for identity in promoted_ids:
+        if identity not in unique or unique[identity]['status'] != 'ok' or not unique[identity].get('promoted'):
+            raise ValueError('Promotion does not match a successful candidate')
+    if (promoted_ids[-1] if promoted_ids else None) != run['champion_id']:
+        raise ValueError('Final champion does not match promotion lineage')
+    if run['champion_id'] and unique[run['champion_id']]['code'] != run['champion_code']:
+        raise ValueError('Final champion code does not match its candidate')
     held_path = root / "results" / "heldout.json"
     held = json.loads(held_path.read_text()) if held_path.exists() else None
     if held and held.get("run_file") != path.name:
@@ -60,7 +70,7 @@ def load_bundle(run_id: str | None = None, root: Path = ROOT) -> dict:
     if held and held.get("champion_status") == "ok":
         ratios = []
         for item in held["items"]:
-            if not all(math.isfinite(item[k]) and item[k] > 0 for k in ("baseline_tps", "champion_tps")):
+            if not all(math.isfinite(item[k]) and item[k] > 0 for k in ("baseline_tps", "champion_tps", "omp_tps")):
                 raise ValueError("Invalid held-out timings")
             ratios.append(item["champion_tps"] / item["baseline_tps"])
         if not math.isclose(statistics.geometric_mean(ratios), held["speedup_geomean"], rel_tol=1e-6):
@@ -82,6 +92,10 @@ def load_bundle(run_id: str | None = None, root: Path = ROOT) -> dict:
     for name, relative in {"repair": "learning-study/repair.json", "study": "learning-study/summary.json", "comparison": "comparison.json"}.items():
         artifact = root / "results" / relative
         extra[name] = json.loads(artifact.read_text()) if artifact.exists() else None
+    if extra['repair'] and extra['repair'].get('source_run_id') != run_id:
+        extra['repair'] = None
+    if extra['comparison'] and extra['comparison'].get('run_id') != run_id:
+        extra['comparison'] = None
     return {"run_id": run_id, "run_file": path.name, "model": run["models"][0] if run["models"] else "",
             "baseline": run["baseline"], "omp_dev": run["reference_omp"]["dev_speedup"], "rounds": rounds,
             "candidates": cands, "heldout": held, "memory": "Atlas export / local replay",
