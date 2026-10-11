@@ -32,21 +32,36 @@ The **held-out** split uses stories110M plus new prompts. It was never used duri
 
 ## Results (Apple M3 Pro)
 
-| | tok/s (stories15M, dev) | vs baseline |
-|---|---|---|
-| Baseline: stock llama2.c `matmul`, `clang -O3` | ~148 | 1.00× |
-| Reference: upstream's own OpenMP build (`make runomp`) | — | ~2.3× |
-| **TokenForge champion** (run `r-20261011-163001`) | ~930 | **~6.2× (5.8–6.7× across re-measurements)** |
+### Held-out: fresh tests never used during optimization (run once; `results/heldout.json`)
 
-- 48 candidates over 8 rounds. 42 were correct; the rest were compile errors or other failures, and each failure was stored as a lesson.
-- Correct-candidate rate: 83% in round 1, rising to 100% in rounds 7–8.
-- Luminal tokens used: about 201,000.
-- **Held-out:** _filled in by `heldout.py` (see `results/heldout.json`)._
+| Model | Baseline (stock llama2.c, `-O3`) | TokenForge champion | Speedup | Upstream OpenMP build (reference) |
+|---|---|---|---|---|
+| **stories110M** (never seen) | 13.9 tok/s | **110.3 tok/s** | **7.95×** | 65.4 tok/s |
+| stories42M (new prompt) | 43.8 tok/s | 368.7 tok/s | 8.42× | 162.6 tok/s |
+| stories15M (new prompt) | 129.1 tok/s | 921.3 tok/s | 7.13× | 346.7 tok/s |
+| **Geometric mean** | | | **7.82×** | |
+
+### Final run: `r-20261011-170439` (MongoDB Atlas Vector Search memory)
+
+| Round | Correct candidates | Champion speedup (dev, re-measured) | Promotion |
+|---|---|---|---|
+| 1 | 5/6 | 6.00× | fast agent |
+| 2–3 | 5/6 | 5.8–6.0× | — |
+| 4 | 3/6 | 6.37× | fast agent |
+| 5 | 4/6 | 6.67× | reasoner agent |
+| 6–8 | 4–5/6 | 5.6–7.1× | — |
+
+- Dev baseline: 148.5 tok/s (stories15M). Upstream OpenMP reference: 2.34× on dev.
+- 48 candidates; 36 correct. Every attempt is stored in Atlas.
+- Luminal tokens used: about 226,000.
+- The first full run (`r-20261011-163001`, local JSONL memory) reached a similar plateau (about 6.2×). Its correct-candidate rate rose from 83% to 100% by rounds 7–8. An early 1-round smoke test (`r-20261011-162519`) is included as well.
 
 ### What we learned (honest read)
-- The large win came in round 1, from NEON SIMD plus multithreading with GCD. Later rounds did not beat it by the 5% promotion margin.
-- The likely reason is Amdahl's law. Once `matmul` is about 6× faster, the parts the agents are not allowed to touch dominate the remaining time: attention, softmax and RMSNorm.
+- **The big win comes in round 1**, from NEON SIMD plus multithreading with GCD.
+- The later promotions (6.0× → 6.67× on dev) each passed the validation gate, but **they are within our timing noise**: the same champion re-measures between 5.6× and 7.1× on a busy laptop. We do not claim a steady climb after round 1.
+- **Amdahl's law explains the plateau.** Once `matmul` is about 6× faster, the code the agents may not touch (attention, softmax, RMSNorm) dominates. The held-out results agree: larger models, where `matmul` is a bigger share of the work, gain more (15M 7.1× → 42M 8.4×, 110M 8.0×).
 - Why clang `-O3` doesn't vectorize the baseline: strict IEEE float rules forbid reordering the sum. The agents reorder it on purpose, and the harness proves the output is still byte-identical.
+- Next step: when the team plateaus, open the next bottleneck (attention, softmax) to the agents under the same byte-exact check.
 
 ## Limitations
 - Results come from one laptop (M3 Pro, 12 cores), with other apps running. We report medians and ranges, not best runs.
